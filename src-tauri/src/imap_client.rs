@@ -19,29 +19,17 @@ pub fn fetch_inbox_top() -> imap::error::Result<Option<String>> {
         .parse::<u16>()
         .expect("IMAP_PORT must be a valid port number");
 
-    let tls = native_tls::TlsConnector::builder()
-        .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+    let client = imap::ClientBuilder::new(&domain, port)
+        // .mode(imap::ConnectionMode::Tls)
+        .danger_skip_tls_verify(true)
+        .connect()?;
 
-    // we pass in the domain twice to check that the server's TLS
-    // certificate is valid for the domain we're connecting to.
-    let client = imap::connect_starttls((&*domain, port), &domain, &tls).unwrap();
-
-    // the client we have here is unauthenticated.
-    // to do anything useful with the e-mails, we need to log in
     let mut imap_session = client.login(&username, &password).map_err(|e| e.0)?;
 
     imap_session.debug = true;
-
-    // we want to fetch the first email in the INBOX mailbox
     imap_session.select("INBOX")?;
 
-    // fetch message number 1 in this mailbox, along with its RFC822 field.
-    // RFC 822 dictates the format of the body of e-mails
-    // let messages = imap_session.fetch("1", "RFC822")?;
-    let messages = imap_session.fetch("1", "BODY[TEXT]")?;
-
+    let messages = imap_session.fetch("1", "RFC822")?;
     let message = if let Some(m) = messages.iter().next() {
         m
     } else {
@@ -58,4 +46,65 @@ pub fn fetch_inbox_top() -> imap::error::Result<Option<String>> {
     imap_session.logout()?;
 
     Ok(Some(body))
+}
+
+pub fn listen_for_emails() -> imap::error::Result<()> {
+    // Try to load from .env if present, continue if not found
+    if let Ok(path) = env::var("CARGO_MANIFEST_DIR") {
+        let env_path = std::path::Path::new(&path).join(".env");
+        if env_path.exists() {
+            dotenv::from_path(env_path).ok();
+        }
+    }
+
+    let domain = env::var("IMAP_DOMAIN").expect("IMAP_DOMAIN environment variable must be set");
+    let username =
+        env::var("IMAP_USERNAME").expect("IMAP_USERNAME environment variable must be set");
+    let password =
+        env::var("IMAP_PASSWORD").expect("IMAP_PASSWORD environment variable must be set");
+    let port = env::var("IMAP_PORT")
+        .expect("IMAP_PORT environment variable must be set")
+        .parse::<u16>()
+        .expect("IMAP_PORT must be a valid port number");
+
+    let client = imap::ClientBuilder::new(&domain, port)
+        // .mode(imap::ConnectionMode::Tls)
+        .danger_skip_tls_verify(true)
+        .connect()?;
+
+    let mut imap_session = client.login(&username, &password).map_err(|e| e.0)?;
+
+    imap_session.debug = true;
+
+    imap_session
+        .select("INBOX")
+        .expect("Could not select mailbox");
+
+    let mut num_responses = 0;
+    let max_responses = 5;
+    let idle_result = imap_session.idle().wait_while(|response| {
+        num_responses += 1;
+        println!("IDLE response #{}: {:?}", num_responses, response);
+
+        if let imap::types::UnsolicitedResponse::Recent(uid) = response {
+            println!("Recent uid: {:?}", uid);
+        }
+
+        if num_responses >= max_responses {
+            // Stop IDLE
+            false
+        } else {
+            // Continue IDLE
+            true
+        }
+    });
+
+    match idle_result {
+        Ok(reason) => println!("IDLE finished normally {:?}", reason),
+        Err(e) => println!("IDLE finished with error {:?}", e),
+    }
+
+    imap_session.logout().expect("Could not log out");
+
+    Ok(())
 }
