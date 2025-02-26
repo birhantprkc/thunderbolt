@@ -1,12 +1,12 @@
 import { createOpenAI } from '@ai-sdk/openai'
 import { useChat } from '@ai-sdk/react'
-import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
+import { fetch as rawTauriFetch } from '@tauri-apps/plugin-http'
 import { streamText } from 'ai'
-// Configure AI SDK to use Tauri's fetch
-// const customFetch = async (url, options) => {
-//   // Use tauriFetch instead of window.fetch
-//   return tauriFetch(url, options)
-// }
+
+const tauriFetch = async (url: RequestInfo | URL, options: RequestInit) => {
+  console.log('tauriFetch', url, options)
+  return rawTauriFetch(url, options)
+}
 
 const debugFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   console.log('fetch', input, init)
@@ -44,11 +44,13 @@ const debugFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
 }
 
 const openai = createOpenAI({
-  baseURL: 'http://localhost:11434/api/chat',
+  baseURL: 'http://localhost:11434/v1',
   fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
     console.log('tauri fetch', input, init)
     return tauriFetch(input, init)
   },
+  // compatibility: 'compatible',
+  apiKey: 'ollama',
 })
 
 const fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -61,15 +63,18 @@ const fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     console.log('aaaa')
 
     // Use streamText with openai model
-    const result = await streamText({
+    const result = streamText({
       model: openai('llama3.2'),
       messages: body.messages,
+      // prompt: 'Hello, how are you?',
     })
 
     console.log('bbbb', result)
 
     // Return the data stream response
-    return result.toDataStreamResponse()
+    const response = result.toDataStreamResponse()
+    console.log('response', response)
+    return response
   } catch (error) {
     console.log('cccc')
     console.error('Error calling Ollama:', error)
@@ -77,20 +82,60 @@ const fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   }
 }
 
+// const fetchCompletion = async (input: RequestInfo | URL, init?: RequestInit) => {
+//   console.log('fetchCompletion', input, init)
+
+//   const options = init as RequestInit & { body: string }
+//   const body = JSON.parse(options.body)
+
+//   try {
+//     console.log('aaaa')
+
+//     // Use generateText with openai model
+//     const result = generateText({
+//       model: openai('llama3.2'),
+//       prompt: body.prompt || 'Hello, how are you?',
+//     })
+
+//     return result.console.log('bbbb', result)
+
+//     // Convert the result to a Response object
+//     return new Response(JSON.stringify(result), {
+//       headers: {
+//         'Content-Type': 'application/json',
+//       },
+//     })
+//   } catch (error) {
+//     console.log('cccc')
+//     console.error('Error calling Ollama:', error)
+//     throw error
+//   }
+// }
+
 export default function App() {
   const { messages, input, handleInputChange, handleSubmit } = useChat({
     // api: 'http://localhost:11434/api/chat',
-    fetch: debugFetch,
+    fetch,
+    // streamProtocol: 'text',
   })
+
+  // const { completion, input, handleInputChange, handleSubmit } = useCompletion({
+  //   // api: 'http://localhost:11434/api/chat',
+  //   // streamProtocol: 'text',
+  //   fetch: fetchCompletion,
+  // })
+
+  console.log('messages', messages)
 
   return (
     <div className="chat-container">
       <div className="messages">
         {messages.map((message, i) => (
-          <div key={i} className={`message ${message.role}`}>
+          <div key={message.id} className={`message ${message.role}`}>
             {message.content}
           </div>
         ))}
+        {/* {JSON.stringify(completion)} */}
       </div>
 
       <form onSubmit={handleSubmit}>
