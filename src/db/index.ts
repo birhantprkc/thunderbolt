@@ -2,6 +2,8 @@ import { createClient } from '@libsql/client'
 import 'dotenv/config'
 import { drizzle } from 'drizzle-orm/libsql'
 
+// This is for local migrations during development only - not used in IRL
+
 // Create a client with encryption configuration
 const client = createClient({
   url: process.env.DB_FILE_NAME!,

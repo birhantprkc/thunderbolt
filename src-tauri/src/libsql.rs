@@ -55,7 +55,13 @@ pub fn value_to_json(value: Value) -> JsonValue {
 }
 
 #[command]
-pub async fn init_libsql(state: State<'_, Mutex<AppState>>, path: String) -> Result<(), String> {
+pub async fn init_libsql(
+    state: State<'_, Mutex<AppState>>,
+    path: String,
+    encryption_key: Option<String>,
+) -> Result<(), String> {
+    println!("🚀 ~ init_libsql: {:?}, {:?}", path, encryption_key);
+
     let fqdb = path.clone();
 
     // Ensure directory exists
@@ -64,16 +70,26 @@ pub async fn init_libsql(state: State<'_, Mutex<AppState>>, path: String) -> Res
             .map_err(|e| format!("Problem creating directory: {}", e))?;
     }
 
-    let cipher = Cipher::Aes256Cbc;
-    let encryption_key_bytes = Bytes::from("your_secure_encryption_key_here");
+    let mut builder = libsql::Builder::new_local(&fqdb);
 
-    let encryption_config = EncryptionConfig {
-        cipher,
-        encryption_key: encryption_key_bytes,
-    };
+    // Apply encryption configuration if key is provided
+    if let Some(key) = encryption_key {
+        println!("🚀 ~ key: {}", key);
 
-    let database = libsql::Builder::new_local(&fqdb)
-        .encryption_config(encryption_config) // Apply encryption configuration
+        let cipher = Cipher::Aes256Cbc;
+        let encryption_key_bytes = Bytes::from(key);
+
+        let encryption_config = EncryptionConfig {
+            cipher,
+            encryption_key: encryption_key_bytes,
+        };
+
+        builder = builder.encryption_config(encryption_config);
+    } else {
+        println!("No encryption key provided...");
+    }
+
+    let database = builder
         .build()
         .await
         .map_err(|e| format!("Failed to build database: {}", e))?;

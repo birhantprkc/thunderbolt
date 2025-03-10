@@ -22,8 +22,10 @@ export interface QueryResult {
  */
 export default class Database {
   path: string
-  constructor(path: string) {
+  encryptionKey: string | undefined
+  constructor(path: string, encryptionKey?: string) {
     this.path = path
+    this.encryptionKey = encryptionKey
   }
 
   /**
@@ -38,15 +40,16 @@ export default class Database {
    *
    * @example
    * ```ts
-   * const db = await Database.load("sqlite:test.db");
+   * const db = await Database.load("sqlite:test.db", "your_secure_encryption_key_here");
    * ```
    */
-  static async load(path: string): Promise<Database> {
+  static async load(path: string, encryptionKey?: string): Promise<Database> {
     const _path = await invoke<string>('init_libsql', {
       path,
+      encryptionKey,
     })
 
-    return new Database(_path)
+    return new Database(_path, encryptionKey)
   }
 
   /**
@@ -65,8 +68,8 @@ export default class Database {
    * const db = Database.get("sqlite:test.db");
    * ```
    */
-  static get(path: string): Database {
-    return new Database(path)
+  static get(path: string, encryptionKey?: string): Database {
+    return new Database(path, encryptionKey)
   }
 
   /**
