@@ -11,8 +11,6 @@ use tokio::sync::Mutex;
 
 use crate::state::AppState;
 
-const OPENAI_API_KEY: &str = "";
-
 #[command]
 async fn toggle_dock_icon(app_handle: tauri::AppHandle, show: bool) -> Result<(), String> {
     if cfg!(target_os = "macos") {

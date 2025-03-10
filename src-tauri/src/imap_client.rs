@@ -1,11 +1,22 @@
 use std::env;
 
 use anyhow::Result;
-use chrono::Utc;
-use entity::message::Model as Message;
+use chrono::{DateTime, Utc};
 use html2text::from_read;
 use mailparse::MailHeaderMap;
 use regex::Regex;
+use uuid::Uuid;
+
+pub struct Message {
+    pub id: Uuid,
+    pub date: DateTime<Utc>,
+    pub subject: String,
+    pub body: String,
+    pub snippet: String,
+    pub clean_text: String,
+    pub clean_text_tokens_in: i32,
+    pub clean_text_tokens_out: i32,
+}
 
 fn remove_urls(input: &str) -> String {
     let url_regex = Regex::new(r"https?://[^\s]+|www\.[^\s]+").unwrap();
