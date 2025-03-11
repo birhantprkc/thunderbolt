@@ -11,7 +11,13 @@ export default function AccountsSettingsPage() {
   const { settings, setSettings } = useSettings()
 
   const [formStore, { Form, Field }] = createForm<AccountsSettings>({
-    initialValues: settings.account,
+    initialValues: {
+      hostname: '',
+      port: 3000,
+      username: '',
+      password: '',
+      ...settings.account,
+    },
   })
 
   const handleSubmit = async (values: AccountsSettings) => {
@@ -29,7 +35,6 @@ export default function AccountsSettingsPage() {
             <Form onSubmit={handleSubmit} class="flex flex-col gap-4">
               <Field name="hostname" validate={[required('Hostname is required.')]}>
                 {(field, props) => {
-                  console.log(props, field)
                   return (
                     <ArkField.Root>
                       <ArkField.Label>Hostname</ArkField.Label>
@@ -45,7 +50,7 @@ export default function AccountsSettingsPage() {
                   return (
                     <ArkField.Root>
                       <ArkField.Label>Port</ArkField.Label>
-                      <Input {...props} value={field.value} />
+                      <Input {...props} value={field.value} type="number" />
                       {field.error && <ArkField.ErrorText>{field.error}</ArkField.ErrorText>}
                     </ArkField.Root>
                   )
@@ -69,7 +74,7 @@ export default function AccountsSettingsPage() {
                   return (
                     <ArkField.Root>
                       <ArkField.Label>Password</ArkField.Label>
-                      <Input {...props} value={field.value} />
+                      <Input {...props} value={field.value} type="password" />
                       {field.error && <ArkField.ErrorText>{field.error}</ArkField.ErrorText>}
                     </ArkField.Root>
                   )
