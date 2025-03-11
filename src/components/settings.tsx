@@ -1,9 +1,10 @@
-import { createContext, createResource, JSX, useContext } from 'solid-js'
+import { createContext, createEffect, createResource, JSX, useContext } from 'solid-js'
 import { z } from 'zod'
 
 import { setSettings as dalSetSetting, getSettings } from '@/dal'
 import { getPath, setPath } from '@/lib/utils'
 import { Settings } from '@/types'
+import { createStore } from 'solid-js/store'
 import { useDrizzle } from './drizzle'
 
 export const AccountSettingsSchema = z.object({
@@ -26,8 +27,6 @@ type SettingsContextType = {
   settings: Settings
   set: (path: string, value: any) => Promise<void>
   get: <T>(path?: string, defaultValue?: T) => T | undefined
-  loading: boolean
-  error: any
 }
 
 const SettingsContext = createContext<SettingsContextType>()
@@ -35,9 +34,10 @@ const SettingsContext = createContext<SettingsContextType>()
 export function SettingsProvider(props: { key: string; children: JSX.Element }) {
   const drizzleContext = useDrizzle()
 
-  const [settings, { mutate, refetch }] = createResource<Settings>(
+  const [settingsData, { mutate, refetch }] = createResource<Settings>(
     async () => {
       const obj = await getSettings<any>(drizzleContext.db, props.key)
+      console.log('obj', obj)
       return obj || {}
     },
     {
@@ -45,12 +45,18 @@ export function SettingsProvider(props: { key: string; children: JSX.Element }) 
     }
   )
 
+  const [settings, setSettings] = createStore<Settings>(settingsData())
+
+  createEffect(() => {
+    setSettings(settingsData())
+  })
+
   const setSettingsValue = async (path: string, value: any) => {
-    if (!settings()) {
+    if (!settings) {
       throw new Error('Cannot set settings before they are loaded')
     }
 
-    const updatedSettings = { ...settings() } as Settings
+    const updatedSettings = { ...settings } as Settings
     setPath(updatedSettings, path, value)
 
     try {
@@ -70,7 +76,7 @@ export function SettingsProvider(props: { key: string; children: JSX.Element }) 
   }
 
   const getSettingsValue = <T,>(path?: string, defaultValue?: T): T | undefined => {
-    const currentSettings = settings()
+    const currentSettings = settings
 
     if (!currentSettings) {
       console.error('Cannot get settings before they are loaded', currentSettings)
@@ -81,19 +87,9 @@ export function SettingsProvider(props: { key: string; children: JSX.Element }) 
   }
 
   const contextValue = {
-    // Use a getter to make settings reactive
-    get settings() {
-      return settings()
-    },
+    settings,
     set: setSettingsValue,
     get: getSettingsValue,
-    // Make these reactive too
-    get loading() {
-      return settings.loading
-    },
-    get error() {
-      return settings.error
-    },
   }
 
   return <SettingsContext.Provider value={contextValue}>{props.children}</SettingsContext.Provider>

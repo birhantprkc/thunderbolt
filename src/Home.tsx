@@ -11,11 +11,18 @@ export default function Home() {
   const { settings } = useSettings()
 
   const chatHelpers = useChat({
-    fetch: (requestInfoOrUrl, init) => aiFetchStreamingResponse(settings.models?.openai_api_key, requestInfoOrUrl, init),
+    fetch: (requestInfoOrUrl, init) => {
+      const apiKey = settings.models?.openai_api_key
+
+      if (!apiKey) {
+        // @todo: show a toast
+        throw new Error('No API key found')
+      }
+
+      return aiFetchStreamingResponse(apiKey, requestInfoOrUrl, init)
+    },
     maxSteps: 5,
   })
-
-  // console.log('messages', chatHelpers.messages())
 
   return (
     <>
