@@ -1,6 +1,6 @@
 /**
  * This file is auto-generated. Do not edit directly.
- * Generated on: 2025-03-12T01:59:49.232Z
+ * Generated on: 2025-03-12T02:24:50.018Z
  */
 
 export interface Migration {
@@ -11,40 +11,13 @@ export interface Migration {
 
 export const migrations: Migration[] = [
   {
-    "hash": "0000_messy_the_hunter",
-    "name": "0000_messy_the_hunter.sql",
-    "sql": `CREATE TABLE \`setting\` (
-\t\`id\` integer PRIMARY KEY NOT NULL,
-\t\`value\` text,
-\t\`updated_at\` text DEFAULT 'CURRENT_TIMESTAMP'
-);
---> statement-breakpoint
-CREATE UNIQUE INDEX \`setting_id_unique\` ON \`setting\` (\`id\`);`
-  },
-  {
-    "hash": "0001_lonely_fallen_one",
-    "name": "0001_lonely_fallen_one.sql",
-    "sql": `ALTER TABLE \`setting\` ADD \`embedding\` text;`
-  },
-  {
-    "hash": "0002_majestic_nicolaos",
-    "name": "0002_majestic_nicolaos.sql",
-    "sql": `CREATE TABLE \`settings\` (
-\t\`key\` text PRIMARY KEY NOT NULL,
-\t\`value\` text,
-\t\`updated_at\` text DEFAULT (CURRENT_DATE)
-);
---> statement-breakpoint
-DROP TABLE \`setting\`;`
-  },
-  {
-    "hash": "0003_cynical_warpath",
-    "name": "0003_cynical_warpath.sql",
+    "hash": "0000_fancy_network",
+    "name": "0000_fancy_network.sql",
     "sql": `CREATE TABLE \`chat_messages\` (
 \t\`id\` text PRIMARY KEY NOT NULL,
-\t\`created_at\` text NOT NULL,
 \t\`parts\` text NOT NULL,
 \t\`role\` text NOT NULL,
+\t\`content\` text NOT NULL,
 \t\`chat_thread_id\` text NOT NULL,
 \t\`model\` text NOT NULL,
 \t\`provider\` text NOT NULL,
@@ -57,12 +30,11 @@ CREATE TABLE \`chat_threads\` (
 \t\`title\` text
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX \`chat_threads_id_unique\` ON \`chat_threads\` (\`id\`);`
-  },
-  {
-    "hash": "0004_melodic_vertigo",
-    "name": "0004_melodic_vertigo.sql",
-    "sql": `ALTER TABLE \`chat_messages\` ADD \`content\` text NOT NULL;--> statement-breakpoint
-ALTER TABLE \`chat_messages\` DROP COLUMN \`created_at\`;`
+CREATE UNIQUE INDEX \`chat_threads_id_unique\` ON \`chat_threads\` (\`id\`);--> statement-breakpoint
+CREATE TABLE \`settings\` (
+\t\`key\` text PRIMARY KEY NOT NULL,
+\t\`value\` text,
+\t\`updated_at\` text DEFAULT (CURRENT_DATE)
+);`
   }
 ];

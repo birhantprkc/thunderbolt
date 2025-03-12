@@ -3,7 +3,6 @@ import { BrowserRouter, Route, Routes } from 'react-router'
 
 import ChatDetailPage from '@/chats/detail'
 import ChatLayout from '@/chats/layout'
-import Layout from '@/layout'
 import AccountsSettingsPage from '@/settings/accounts'
 import Settings from '@/settings/index'
 import ModelsSettingsPage from '@/settings/models'
@@ -12,12 +11,12 @@ import ChatNewPage from './chats/new'
 import { initializeDrizzleDatabase } from './db/database'
 import { migrate } from './db/migrate'
 import { DrizzleProvider } from './db/provider'
+import AppLayout from './layout'
 import { createAppDataDir } from './lib/fs'
 import { createTray } from './lib/tray'
 import SettingsLayout from './settings/layout'
 import { SettingsProvider } from './settings/provider'
 import { DrizzleContextType } from './types'
-import UiKitPage from './ui-kit'
 
 const queryClient = new QueryClient()
 
@@ -52,7 +51,7 @@ export const App = () => {
         <SettingsProvider section="main">
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Layout />}>
+              <Route path="/" element={<AppLayout />}>
                 {/* Home routes with HomeLayout */}
                 <Route element={<ChatLayout />}>
                   <Route index element={<ChatNewPage />} />
@@ -66,7 +65,7 @@ export const App = () => {
                   <Route path="models" element={<ModelsSettingsPage />} />
                 </Route>
 
-                <Route path="ui-kit" element={<UiKitPage />} />
+                {/* <Route path="ui-kit" element={<UiKitPage />} /> */}
               </Route>
             </Routes>
           </BrowserRouter>
