@@ -14,7 +14,7 @@ import { migrate } from './db/migrate'
 import { DrizzleProvider } from './db/provider'
 import Layout from './layout'
 import { createAppDataDir } from './lib/fs'
-import { createTray } from './lib/tray'
+import { useTray } from './lib/tray'
 import Loading from './loading'
 import SettingsLayout from './settings/layout'
 import { SettingsProvider } from './settings/provider'
@@ -24,7 +24,6 @@ import UiKitPage from './ui-kit'
 const queryClient = new QueryClient()
 
 const init = async (): Promise<InitData> => {
-  createTray()
   createAppDataDir()
 
   const { db, sqlite } = await initializeDrizzleDatabase()
@@ -41,6 +40,8 @@ const init = async (): Promise<InitData> => {
 }
 
 export const App = () => {
+  useTray()
+
   const [initData, setInitData] = useState<InitData>()
 
   useEffect(() => {

@@ -3,9 +3,9 @@ import { Menu } from '@tauri-apps/api/menu'
 import { TrayIcon } from '@tauri-apps/api/tray'
 import { getCurrentWindow, Window } from '@tauri-apps/api/window'
 import { exit } from '@tauri-apps/plugin-process'
-import { onCleanup, onMount } from 'solid-js'
+import { useEffect } from 'react'
 
-export const createTray = () => {
+export const useTray = () => {
   let tray: TrayIcon | undefined
   let appWindow: Window | undefined
 
@@ -40,34 +40,38 @@ export const createTray = () => {
     })
   }
 
-  onMount(async () => {
-    appWindow = getCurrentWindow()
+  useEffect(() => {
+    const initTray = async () => {
+      appWindow = getCurrentWindow()
 
-    await setupWindowBehavior()
+      await setupWindowBehavior()
 
-    const menu = await Menu.new({
-      items: [
-        {
-          id: 'show',
-          text: 'Show',
-          action: handleShowClick,
-        },
-        {
-          id: 'quit',
-          text: 'Quit',
-          action: handleQuitClick,
-        },
-      ],
-    })
+      const menu = await Menu.new({
+        items: [
+          {
+            id: 'show',
+            text: 'Show',
+            action: handleShowClick,
+          },
+          {
+            id: 'quit',
+            text: 'Quit',
+            action: handleQuitClick,
+          },
+        ],
+      })
 
-    tray = await TrayIcon.new({
-      title: 'Assist',
-      tooltip: 'Assist',
-      menu,
-    })
-  })
+      tray = await TrayIcon.new({
+        title: 'Assist',
+        tooltip: 'Assist',
+        menu,
+      })
+    }
 
-  onCleanup(() => {
-    tray?.close()
-  })
+    initTray()
+
+    return () => {
+      tray?.close()
+    }
+  }, [])
 }
