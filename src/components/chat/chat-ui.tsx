@@ -18,13 +18,13 @@ export default function ChatUI({ chatHelpers }: ChatUIProps) {
   }, [chatHelpers.messages])
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 overflow-hidden">
+    <div className="flex flex-col h-full bg-white overflow-hidden">
       <div className="flex-1 p-4 overflow-y-auto space-y-4">
         {chatHelpers.messages.map((message, i) => {
           if (message.role === 'assistant') {
             return (
-              <div key={i} className="p-4 space-y-2 rounded-tl-lg rounded-tr-lg rounded-br-lg max-w-3/4 bg-white border border-gray-200 mr-auto">
-                {message.content && <div className="text-gray-700 leading-relaxed">{message.content}</div>}
+              <div key={i} className="space-y-2 p-4 rounded-md  bg-secondary mr-auto">
+                {message.content && <div className="text-secondary-foreground leading-relaxed">{message.content}</div>}
                 {message.parts
                   ?.filter((part) => part.type === 'tool-invocation')
                   .map((part, j) => (
@@ -34,7 +34,7 @@ export default function ChatUI({ chatHelpers }: ChatUIProps) {
             )
           } else if (message.role === 'user') {
             return (
-              <div key={i} className="p-4  rounded-md  max-w-3/4 bg-primary text-primary-foreground ml-auto">
+              <div key={i} className="p-4 rounded-md max-w-3/4 bg-primary text-primary-foreground ml-auto">
                 <div className="space-y-2">
                   <div className="text-primary-foreground leading-relaxed">{message.content}</div>
                 </div>
