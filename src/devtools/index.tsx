@@ -1,5 +1,6 @@
 import EmbedderSettingsSection from './embedder-settings'
 import GenerateEmbeddingsSection from './generate-embeddings'
+import GenerateThreadsSection from './generate-threads'
 import ImapMailboxesSection from './imap-mailboxes-section'
 import ImapSyncSection from './imap-sync-section'
 import ResetEmailMessagesSection from './reset-email-messages'
@@ -15,6 +16,7 @@ export default function DevToolsPage() {
         <div className="grid gap-6">
           <ImapSyncSection />
           <ImapMailboxesSection />
+          <GenerateThreadsSection />
           <ResetEmailMessagesSection />
           <EmbedderSettingsSection />
           <GenerateEmbeddingsSection />

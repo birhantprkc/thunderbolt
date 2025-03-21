@@ -8,6 +8,20 @@
       "when": 1742549917627,
       "tag": "0000_left_harrier",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1742584745701,
+      "tag": "0001_furry_rattler",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1742588166828,
+      "tag": "0002_smiling_marauders",
+      "breakpoints": true
     }
   ]
 }

@@ -248,12 +248,7 @@ impl ImapSync {
     }
 
     fn extract_in_reply_to(message: &Message<'_>) -> Option<String> {
-        // Get the in-reply-to header directly
-        message
-            .headers()
-            .iter()
-            .find(|header| header.name().eq_ignore_ascii_case("in-reply-to"))
-            .map(|header| format!("{:?}", header.value()))
+        message.in_reply_to().as_text().map(|s| s.to_string())
     }
 
     fn parse_message_date(message: &Message<'_>) -> Option<DateTime<Utc>> {

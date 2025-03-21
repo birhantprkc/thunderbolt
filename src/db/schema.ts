@@ -52,6 +52,12 @@ export const chatMessagesTable = sqliteTable('chat_messages', {
     .references(() => chatThreadsTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
 })
 
+export const emailThreadsTable = sqliteTable('email_threads', {
+  id: text('id').primaryKey().notNull().unique(),
+  subject: text('subject').notNull(),
+  date: text('date').notNull(),
+})
+
 export const emailMessagesTable = sqliteTable('email_messages', {
   id: text('id').primaryKey().notNull().unique(),
   messageId: text('message_id').notNull().unique(),
@@ -66,6 +72,8 @@ export const emailMessagesTable = sqliteTable('email_messages', {
 
   // @todo this will become a foreign key to the email_messages table
   in_reply_to: text('in_reply_to'),
+
+  email_thread_id: text('email_thread_id').references(() => emailThreadsTable.id, { onDelete: 'set null', onUpdate: 'cascade' }),
 })
 
 export const embeddingsTable = sqliteTable('embeddings', {
@@ -73,5 +81,8 @@ export const embeddingsTable = sqliteTable('embeddings', {
   email_message_id: text('email_message_id')
     .unique()
     .references(() => emailMessagesTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  email_thread_id: text('email_thread_id')
+    .unique()
+    .references(() => emailThreadsTable.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
   embedding: float32Array('embedding', { dimensions: 384 }),
 })
