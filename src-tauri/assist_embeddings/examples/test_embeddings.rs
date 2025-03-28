@@ -1,12 +1,19 @@
 use anyhow::Result;
+use assist_embeddings::embedding::{generate_embedding, Embedder};
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     println!("Testing embedding generation with a sample text...");
 
-    // Import the get_embedding function directly
+    // Initialize the embedder
+    println!("Initializing embedder...");
+    let embedder = Embedder::new()?;
+    println!("Embedder initialized successfully.");
+
+    // Generate an embedding for a sample text
     let sample_text = "This is a test email to verify embedding generation works correctly.";
-    let embedding = assist_embeddings::embedding::get_embedding(sample_text)?;
+    println!("Generating embedding for: '{}'", sample_text);
+
+    let embedding = generate_embedding(&embedder, sample_text)?;
 
     println!(
         "Successfully generated embedding with {} dimensions",

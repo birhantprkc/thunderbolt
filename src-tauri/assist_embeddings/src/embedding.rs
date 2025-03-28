@@ -228,3 +228,9 @@ pub fn generate_embeddings_arc(
 ) -> anyhow::Result<Vec<Vec<f32>>> {
     generate_embeddings(embedder, texts)
 }
+
+// Add convenience function for backward compatibility with examples
+pub fn get_embedding(text: &str) -> anyhow::Result<Vec<f32>> {
+    let embedder = Embedder::new()?;
+    generate_embedding(&embedder, text)
+}

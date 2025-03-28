@@ -36,7 +36,7 @@ Performance benchmarks show the following approximate processing times:
 ```rust
 let embedder = Embedder::new()?;
 let text = "This is a sample text to embed.";
-let embedding = get_embedding_with_embedder(&embedder, text)?;
+let embedding = generate_embedding(&embedder, text)?;
 ```
 
 ### Multiple Text Embeddings
@@ -48,7 +48,7 @@ let texts = vec![
     "Second text to embed.".to_string(),
     // ...more texts
 ];
-let embeddings = get_embeddings_with_embedder(&embedder, &texts)?;
+let embeddings = generate_embeddings(&embedder, &texts)?;
 ```
 
 ## Integration with Tauri
@@ -63,7 +63,7 @@ The embeddings module is integrated with the Tauri application through commands:
 
 - Generate embeddings for email messages in batches
 - Store embeddings in the database for later retrieval
-- Uses the Jina AI embedding model for high-quality text representations
+- Uses the E5-small embedding model for high-quality text representations
 - Generates UUIDs v7 for time-sorted unique identifiers
 
 ## Examples
@@ -100,5 +100,5 @@ The embedding model returns tensors with shape `[1, 768]`, but the `to_vec1()` m
 ## Structure
 
 - `lib.rs`: Main library code with database operations
-- `embedding.rs`: Embedding generation using Jina AI model
+- `embedding.rs`: Embedding generation using E5-small model
 - `examples/`: Example applications demonstrating the functionality 

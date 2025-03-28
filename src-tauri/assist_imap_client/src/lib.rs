@@ -23,6 +23,36 @@ pub struct ImapOptions {
     pub debug: Option<bool>,
 }
 
+/// Email address structure with name and address fields
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmailAddress {
+    pub name: Option<String>,
+    pub address: String,
+}
+
+/// Structure representing an email message
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmailMessage {
+    pub imap_id: String,
+    pub html_body: String,
+    pub text_body: String,
+    pub clean_text: String,
+    pub subject: Option<String>,
+    pub sent_at: i64,
+    pub from_address: EmailAddress,
+    pub to_address: Vec<EmailAddress>,
+    pub in_reply_to: Option<String>,
+    pub references: Option<String>,
+}
+
+/// Structure representing the response from fetch_messages
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FetchMessagesResponse {
+    pub index: usize,
+    pub total: usize,
+    pub messages: Vec<EmailMessage>,
+}
+
 impl Default for ImapOptions {
     fn default() -> Self {
         ImapOptions { debug: None }
@@ -138,12 +168,12 @@ impl ImapClient {
             // If mailbox is empty, return empty result
             if total_messages == 0 {
                 // Return a properly structured empty result
-                let result = serde_json::json!({
-                    "index": 0,
-                    "total": 0,
-                    "messages": []
-                });
-                return Ok(result);
+                let result = FetchMessagesResponse {
+                    index: 0,
+                    total: 0,
+                    messages: vec![],
+                };
+                return Ok(serde_json::to_value(result)?);
             }
 
             // Calculate the range to fetch
@@ -223,9 +253,34 @@ impl ImapClient {
                 let from_address = parsed_message
                     .from()
                     .and_then(|addresses| addresses.first())
-                    .and_then(|addr| addr.address())
-                    .map(|addr| addr.to_string())
-                    .unwrap_or_default();
+                    .map(|addr| EmailAddress {
+                        name: addr.name().map(|name| name.to_string()),
+                        address: addr
+                            .address()
+                            .map(|addr| addr.to_string())
+                            .unwrap_or_default(),
+                    })
+                    .unwrap_or(EmailAddress {
+                        name: None,
+                        address: String::new(),
+                    });
+
+                // Extract to addresses
+                let to_address = parsed_message
+                    .to()
+                    .map(|addresses| {
+                        addresses
+                            .iter()
+                            .map(|addr| EmailAddress {
+                                name: addr.name().map(|name| name.to_string()),
+                                address: addr
+                                    .address()
+                                    .map(|addr| addr.to_string())
+                                    .unwrap_or_default(),
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_else(Vec::new);
 
                 // Extract in_reply_to
                 let in_reply_to = parsed_message
@@ -236,42 +291,33 @@ impl ImapClient {
                 // Extract references
                 let references = parsed_message.references().as_text().map(|s| s.to_string());
 
-                // Create the message object
-                let mut message_obj = serde_json::Map::new();
-                message_obj.insert("imap_id".to_string(), JsonValue::String(imap_id));
-                message_obj.insert("html_body".to_string(), JsonValue::String(html_body));
-                message_obj.insert("text_body".to_string(), JsonValue::String(text_body));
+                // Create the message object using our struct
+                let email_message = EmailMessage {
+                    imap_id,
+                    html_body,
+                    text_body,
+                    clean_text,
+                    subject,
+                    sent_at,
+                    from_address,
+                    to_address,
+                    in_reply_to,
+                    references,
+                };
 
-                if let Some(subj) = subject {
-                    message_obj.insert("subject".to_string(), JsonValue::String(subj));
-                }
-
-                message_obj.insert("sent_at".to_string(), JsonValue::Number(sent_at.into()));
-                message_obj.insert("from_address".to_string(), JsonValue::String(from_address));
-
-                if let Some(reply) = in_reply_to {
-                    message_obj.insert("in_reply_to".to_string(), JsonValue::String(reply));
-                }
-
-                if let Some(refs) = references {
-                    message_obj.insert("references".to_string(), JsonValue::String(refs));
-                }
-
-                // Add clean_text
-                message_obj.insert("clean_text".to_string(), JsonValue::String(clean_text));
-
-                messages.push(JsonValue::Object(message_obj));
+                messages.push(email_message);
             }
         }
 
-        // Create the result object with index, total and messages fields
-        let result = serde_json::json!({
-            "index": actual_start_index,
-            "total": total_messages,
-            "messages": messages
-        });
+        // Create the result object
+        let result = FetchMessagesResponse {
+            index: actual_start_index,
+            total: total_messages,
+            messages,
+        };
 
-        Ok(result)
+        // Convert to JsonValue
+        Ok(serde_json::to_value(result)?)
     }
 
     /// Fetch messages from a specific mailbox

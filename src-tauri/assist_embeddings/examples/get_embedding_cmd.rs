@@ -1,19 +1,23 @@
 use anyhow::Result;
-use serde_json::json;
+use assist_embeddings::embedding::{generate_embedding, Embedder};
 
-// This example demonstrates how a client would use the get_embedding command
-// It doesn't actually call Tauri directly but shows the expected format
-// of the input and output
+// This example demonstrates how a client would use the embedding functionality
+// It simulates what would normally be done through a Tauri command
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    println!("Testing get_embedding command with a sample text...");
+fn main() -> Result<()> {
+    println!("Testing embedding generation with a sample text...");
+
+    // Initialize the embedder
+    println!("Initializing embedder...");
+    let embedder = Embedder::new()?;
+    println!("Embedder initialized successfully.");
 
     // Sample text to embed
     let sample_text = "This is a test email to verify embedding generation works correctly.";
+    println!("Generating embedding for: '{}'", sample_text);
 
-    // Call get_embedding - this would normally be done through Tauri's invoke
-    let embedding = assist_embeddings::embedding::get_embedding(sample_text)?;
+    // Generate the embedding
+    let embedding = generate_embedding(&embedder, sample_text)?;
 
     // Display the embedding dimensions
     println!(

@@ -1,16 +1,24 @@
 use anyhow::{anyhow, Result};
-use assist_embeddings::{generate_all, generate_batch};
+use assist_embeddings::embedding::Embedder;
+use assist_embeddings::{generate_all_with_embedder, generate_batch_with_embedder};
 use libsql::{Builder, Connection};
 use std::env;
 use std::path::Path;
 
-// Add this new function
+// Test embedding functionality
 async fn test_embedding_generation() -> Result<()> {
     println!("Testing embedding generation with a sample text...");
 
-    // Import the get_embedding function directly
+    // Initialize the embedder
+    println!("Initializing embedder...");
+    let embedder = assist_embeddings::embedding::Embedder::new()?;
+    println!("Embedder initialized successfully.");
+
+    // Generate an embedding for a sample text
     let sample_text = "This is a test email to verify embedding generation works correctly.";
-    let embedding = assist_embeddings::embedding::get_embedding(sample_text)?;
+    println!("Generating embedding for: '{}'", sample_text);
+
+    let embedding = assist_embeddings::embedding::generate_embedding(&embedder, sample_text)?;
 
     println!(
         "Successfully generated embedding with {} dimensions",
@@ -90,17 +98,22 @@ async fn process_embeddings(conn: &Connection) -> Result<()> {
     // Define batch size
     let batch_size = 10;
 
+    // Initialize embedder for processing
+    println!("Initializing embedder for database processing...");
+    let embedder = Embedder::new()?;
+    println!("Embedder initialized successfully.");
+
     // Option 1: Process a single batch
     println!(
         "Processing a single batch of up to {} messages...",
         batch_size
     );
-    let processed = generate_batch(conn, batch_size).await?;
+    let processed = generate_batch_with_embedder(conn, batch_size, &embedder).await?;
     println!("Processed {} messages in batch", processed);
 
     // Option 2: Process all messages
     println!("Processing all remaining messages...");
-    let total_processed = generate_all(conn, batch_size).await?;
+    let total_processed = generate_all_with_embedder(conn, batch_size, &embedder).await?;
     println!("Processed a total of {} messages", total_processed);
 
     Ok(())
