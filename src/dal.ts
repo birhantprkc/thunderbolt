@@ -21,9 +21,9 @@ export const seedModels = async (db: DrizzleContextType['db']) => {
   const models = await db.select().from(modelsTable)
   if (models.length === 0) {
     const seedData = [
-      { id: uuidv7(), provider: 'openai' as const, model: 'gpt-4o', isSystem: 1 },
-      { id: uuidv7(), provider: 'openai' as const, model: 'o3-mini', isSystem: 1 },
-      { id: uuidv7(), provider: 'openai_compatible' as const, model: 'llama3.2:3b-instruct-q4_1', url: 'http://localhost:11434/v1', isSystem: 0 },
+      { id: uuidv7(), name: 'gpt-4o', provider: 'openai' as const, model: 'gpt-4o', isSystem: 1 },
+      { id: uuidv7(), name: 'o3-mini', provider: 'openai' as const, model: 'o3-mini', isSystem: 1 },
+      { id: uuidv7(), name: 'llama-3.2', provider: 'openai_compatible' as const, model: 'llama3.2:3b-instruct-q4_1', url: 'http://localhost:11434/v1', isSystem: 0 },
     ]
     for (const model of seedData) {
       await db.insert(modelsTable).values(model)

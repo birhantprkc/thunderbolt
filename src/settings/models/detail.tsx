@@ -19,6 +19,7 @@ import { Trash2 } from 'lucide-react'
 const formSchema = z
   .object({
     provider: z.enum(['openai', 'fireworks', 'openai_compatible']),
+    name: z.string().min(1, { message: 'Name is required.' }),
     model: z.string().min(1, { message: 'Model name is required.' }),
     url: z.string().optional(),
     apiKey: z.string().optional(),
@@ -88,6 +89,7 @@ export default function ModelDetailPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       provider: model?.provider || 'openai',
+      name: model?.name || '',
       model: model?.model || '',
       url: model?.url || '',
       apiKey: model?.apiKey || '',
@@ -99,6 +101,7 @@ export default function ModelDetailPage() {
     if (model) {
       form.reset({
         provider: model.provider || 'openai',
+        name: model.name || '',
         model: model.model || '',
         url: model.url || '',
         apiKey: model.apiKey || '',
@@ -136,10 +139,26 @@ export default function ModelDetailPage() {
               {model.isSystem !== 1 && (
                 <FormField
                   control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {model.isSystem !== 1 && (
+                <FormField
+                  control={form.control}
                   name="model"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Model Name</FormLabel>
+                      <FormLabel>Model</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>

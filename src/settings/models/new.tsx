@@ -17,9 +17,10 @@ import { Model } from '@/types'
 const formSchema = z
   .object({
     provider: z.enum(['openai', 'fireworks', 'openai_compatible']),
+    name: z.string().min(1, { message: 'Name is required.' }),
     model: z.string().min(1, { message: 'Model name is required.' }),
     url: z.string().optional(),
-    api_key: z.string().optional(),
+    apiKey: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -38,11 +39,11 @@ const formSchema = z
       if (data.provider === 'openai_compatible') {
         return true // API key is optional for openai_compatible
       }
-      return data.api_key !== undefined && data.api_key.length > 0
+      return data.apiKey !== undefined && data.apiKey.length > 0
     },
     {
       message: 'API Key is required for this provider',
-      path: ['api_key'],
+      path: ['apiKey'],
     }
   )
 
@@ -70,18 +71,19 @@ export default function NewModelPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       provider: 'openai',
+      name: '',
       model: '',
       url: '',
-      api_key: '',
+      apiKey: '',
     },
   })
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     createModelMutation.mutate({
       ...values,
-      api_key: values.api_key || null,
+      apiKey: values.apiKey || null,
       url: values.url || null,
-      is_system: 0,
+      isSystem: 0,
     })
   }
 
@@ -115,10 +117,24 @@ export default function NewModelPage() {
 
             <FormField
               control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="model"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Model Name</FormLabel>
+                  <FormLabel>Model</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -145,7 +161,7 @@ export default function NewModelPage() {
 
             <FormField
               control={form.control}
-              name="api_key"
+              name="apiKey"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>API Key</FormLabel>

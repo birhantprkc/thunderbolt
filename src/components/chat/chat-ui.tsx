@@ -65,11 +65,7 @@ export default function ChatUI({ chatHelpers, models, selectedModel, onModelChan
               <SelectContent>
                 {models.map((model) => (
                   <SelectItem key={model.id} value={model.id}>
-                    <p className="text-left">
-                      {model.provider === 'openai' && 'OpenAI'}
-                      {model.provider === 'fireworks' && 'Fireworks'}
-                      {model.provider === 'openai_compatible' && 'OpenAI Compatible'} - {model.model}
-                    </p>
+                    <p className="text-left">{model.name}</p>
                   </SelectItem>
                 ))}
               </SelectContent>
