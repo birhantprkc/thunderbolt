@@ -22,7 +22,32 @@ export const tools = {
   searchInbox: {
     verb: 'Searching the inbox...',
     tool: tool({
-      description: "A tool for searching the user's inbox.",
+      description: `A tool for searching the user's inbox.
+
+
+       If you want to reference the results of this tool in your response when you call the "answer" tool, use the following format.
+        {
+          "text": "I found several Postmark receipts in your inbox. Here are the details of the receipts:",
+          "results": [
+            {
+              "id": "bef3aad4-731f-48c8-acd9-799f82a5f106",
+              "type": "message"
+            },
+            {
+              "id": "29d52df1-2786-4f47-a53d-a23a33a07ebf",
+              "type": "message"
+            },
+            {
+              "id": "f98bc38a-53ab-48bc-a6d1-4b122358385a",
+              "type": "thread"
+            },
+            {
+              "id": "2026780c-8af3-4d02-91dc-36a62a7413e2",
+              "type": "contact"
+            }
+          ]
+        }
+      `,
       parameters: z.object({
         query: z.string().describe("The query to search the user's inbox with."),
         originalUserMessage: z.string().describe('The original user message that triggered this tool call.'),

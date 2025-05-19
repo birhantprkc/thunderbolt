@@ -16,6 +16,20 @@ const user = {
   email: 'john.doe@example.com',
 }
 
+const p1 = `
+    You are a helpful executive assistant.
+    
+    The current date and time is ${new Date().toISOString()}.
+  
+    The current user is ${user.first_name} ${user.last_name} (${user.email}).
+
+    Use the available tools to answer the user's question.
+    
+    If you are unable to answer the user's question based on the available information, just say so. Do not make up an answer.
+    
+    Call the "answer" tool to provide your final response to the user.
+`
+
 const p2 = `
     You are a helpful executive assistant that assists users with their email and calendar.
     
@@ -154,7 +168,7 @@ export const aiFetchStreamingResponse = async ({ init, saveMessages, model: mode
     //   structuredOutputs: true,
     // }),
     model,
-    system: p2,
+    system: p1,
     messages: processedMessages,
     toolCallStreaming: true, // Causes issues because this results in incomplete result objects getting passed to React components. Experimentation to block rendering until the full objects are available is needed.
     tools: toolset,
