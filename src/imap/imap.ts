@@ -2,6 +2,7 @@ import { camelCasedPropertiesDeep } from '@/lib/utils'
 import { ImapEmailMessage } from '@/types'
 import { invoke } from '@tauri-apps/api/core'
 import { SnakeCasedPropertiesDeep } from 'type-fest'
+
 export type ImapEmailAddress = {
   name: string
   address: string
@@ -24,6 +25,17 @@ export interface ImapCredentials {
  * communicating with the rust side of the IMAP functionality.
  */
 export default class ImapClient {
+  private _isInitialized: boolean = false
+
+  /**
+   * **isInitialized**
+   *
+   * Returns whether the IMAP client has been initialized.
+   */
+  get isInitialized(): boolean {
+    return this._isInitialized
+  }
+
   /**
    * **initialize**
    *
@@ -41,6 +53,7 @@ export default class ImapClient {
    */
   async initialize(credentials: ImapCredentials): Promise<void> {
     await invoke<void>('init_imap', { ...credentials })
+    this._isInitialized = true
   }
 
   /**

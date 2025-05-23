@@ -4,6 +4,7 @@ import { Window } from '@tauri-apps/api/window'
 import { InferSelectModel } from 'drizzle-orm'
 import { SqliteRemoteDatabase } from 'drizzle-orm/sqlite-proxy'
 import * as schema from './db/schema'
+
 import {
   chatMessagesTable,
   chatThreadsTable,

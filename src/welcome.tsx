@@ -1,17 +1,12 @@
-import { createOpenAI } from '@ai-sdk/openai'
-import { streamObject } from 'ai'
-import { eq, isNotNull } from 'drizzle-orm'
 import { CheckCircle2, ChevronDown, RefreshCw, Square } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { v7 as uuidv7 } from 'uuid'
-import { z } from 'zod'
 import { Button } from './components/ui/button'
 import { Skeleton } from './components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './components/ui/tooltip'
 import { useDrizzle } from './db/provider'
-import { emailMessagesTable, modelsTable, todosTable } from './db/tables'
+import { todosTable } from './db/tables'
 import { useImap } from './imap/provider'
-import { ImapSyncer } from './imap/sync'
+import { refreshTasks } from './lib/tasks'
 import { useSetting } from './settings/hooks'
 import { useSideview } from './sideview/provider'
 
@@ -20,7 +15,7 @@ export default function WelcomePage() {
   const { db } = useDrizzle()
   const { setSideview } = useSideview()
   const [_inboxSummary, setInboxSummary] = useState<string | null>(null)
-  const [toDoList, setToDoList] = useState<{ item: string; emailMessageId: string | null }[]>([])
+  const [toDoList, setToDoList] = useState<{ item: string; emailMessageId?: string | null }[]>([])
   const [loading, setLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showAllTodos, setShowAllTodos] = useState(false)
@@ -31,10 +26,8 @@ export default function WelcomePage() {
   const timeOfDay = hours < 12 ? 'Morning' : hours < 18 ? 'Afternoon' : 'Evening'
   const date = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
-  const fetchInboxData = async (forceRefresh = false) => {
+  const refresh = async (forceRefresh = false) => {
     try {
-      if (!imapClient) return
-
       setIsRefreshing(true)
       setLoading(true)
       setToDoList([]) // Clear existing todos while loading
@@ -47,75 +40,8 @@ export default function WelcomePage() {
       if (forceRefresh || !lastGeneratedTodos || now - lastGeneratedTodos > oneHourInMs) {
         console.log('Regenerating todos')
 
-        // Delete existing todos with email_thread_id
-        await db.delete(todosTable).where(isNotNull(todosTable.emailMessageId))
-
-        // Fetch emails from inbox
-        // const { messages } = await imapClient.fetchMessages('INBOX', 1, 10)
-
-        const syncer = new ImapSyncer(db, 'INBOX', 10)
-        await syncer.syncPage(1, 10)
-
-        const messages = await db.select().from(emailMessagesTable).where(eq(emailMessagesTable.mailbox, 'INBOX'))
-
-        const model = await db.select().from(modelsTable).where(eq(modelsTable.isSystem, 1)).get()
-
-        if (!model?.apiKey) {
-          console.log('No model found')
-          setInboxSummary('Please set your OpenAI API key in settings to generate inbox summaries.')
-          setLoading(false)
-          setIsRefreshing(false)
-          return
-        }
-
-        const openai = createOpenAI({
-          apiKey: model.apiKey,
-        })
-
-        const emailsContext = messages
-          .map(
-            (message) =>
-              `Message ID: ${message.id}\nSubject: ${message.subject || 'No subject'}\nFrom: ${message.fromAddress || 'Unknown'}\nSnippet: ${message.textBody?.substring(0, 300) || 'No content'}`
-          )
-          .join('\n\n')
-
-        const result = streamObject({
-          model: openai('o3-mini'),
-          system: `You are an email assistant that turns emails into a to-do list. Provide up to 10 to-do items based on the emails provided while ensuring that you never duplicate items. Only include items that are appear important and actionable. Ignore items that appear to be newsletters, informational, solicitation, or promotional. If you reference a person, use their full name (the user might not know who they are). Assume the user has not read the emails and doesn't know anything about them or the people, places, or ideas mentioned in them. Don't refer to "the ___" (the user might not know what that is) - only refer to things by name. Keep each line under 100 characters.`,
-          messages: [
-            {
-              role: 'user',
-              content: `Here are the latest emails in my inbox. Please provide a summary:\n\n${emailsContext}`,
-            },
-          ],
-          output: 'array',
-          schema: z.object({
-            emailMessageId: z.string(),
-            item: z.string(),
-          }),
-          onError(error) {
-            console.error('Error fetching inbox data:', error)
-            setInboxSummary('Error loading inbox summary. Please try again later.')
-            setLoading(false)
-            setIsRefreshing(false)
-          },
-          onFinish(_response) {
-            console.log('response', _response)
-          },
-        })
-
-        for await (const partialObject of result.partialObjectStream) {
-          setLoading(false)
-          setToDoList((_prev) => partialObject)
-        }
-
-        // Insert todos into the database
-        for (const todo of await result.object) {
-          await db.insert(todosTable).values({
-            id: uuidv7(),
-            item: todo.item,
-            emailMessageId: todo.emailMessageId,
-          })
+        if (imapClient.isInitialized) {
+          await refreshTasks({ db })
         }
 
         // Save the timestamp of when we generated the todos
@@ -125,13 +51,10 @@ export default function WelcomePage() {
         // })
 
         await setLastGeneratedTodos(now)
-      } else {
-        // If we don't need to regenerate todos, just fetch them from the database
-        const todos = await db.select().from(todosTable).where(isNotNull(todosTable.emailMessageId)).orderBy(todosTable.id)
-        setToDoList(todos.map((todo) => ({ item: todo.item, emailMessageId: todo.emailMessageId })))
-        setLoading(false)
       }
 
+      const todos = await db.select().from(todosTable).orderBy(todosTable.id)
+      setToDoList(todos.map((todo) => ({ item: todo.item, emailMessageId: todo.emailMessageId })))
       setLoading(false)
       setIsRefreshing(false)
     } catch (error) {
@@ -144,7 +67,7 @@ export default function WelcomePage() {
 
   useEffect(() => {
     if (!isLoadingLastGeneratedTodos) {
-      fetchInboxData()
+      refresh()
     }
   }, [isLoadingLastGeneratedTodos])
 
@@ -172,7 +95,7 @@ export default function WelcomePage() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
-                    <h2 className="text-xl font-semibold">Your Action Items</h2>
+                    <h2 className="text-xl font-semibold">Your Tasks</h2>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
                     <p className="text-sm">Auto-generated from your inbox</p>
@@ -180,7 +103,7 @@ export default function WelcomePage() {
                 </Tooltip>
               </TooltipProvider>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => fetchInboxData(true)} className="cursor-pointer" disabled={isRefreshing}>
+            <Button variant="ghost" size="icon" onClick={() => refresh(true)} className="cursor-pointer" disabled={isRefreshing}>
               <RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
             </Button>
           </div>
