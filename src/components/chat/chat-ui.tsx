@@ -8,6 +8,7 @@ import { Input } from '../ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { AgentToolResponse } from './agent-tool-response'
 import { Reasoning } from './reasoning'
+import { StreamingMarkdown } from './streaming-markdown'
 
 interface ChatUIProps {
   chatHelpers: UseChatHelpers
@@ -100,9 +101,12 @@ export default function ChatUI({ chatHelpers, models, selectedModel, onModelChan
                     {message.parts
                       .filter((part) => part.type === 'text')
                       .map((part, j) => (
-                        <div key={j} className="text-secondary-foreground leading-relaxed">
-                          {part.text}
-                        </div>
+                        <StreamingMarkdown
+                          key={j}
+                          content={part.text}
+                          isStreaming={chatHelpers.status === 'streaming' && i === chatHelpers.messages.length - 1}
+                          className="text-secondary-foreground leading-relaxed"
+                        />
                       ))}
                   </div>
                 )

@@ -34,7 +34,7 @@ const createPrompt = ({ preferredName, location }: PromptParams) => {
     location.name ? `The user's location is ${location.name}${location.lat && location.lng ? ` (${location.lat}, ${location.lng})` : ''}.` : '',
     `You can use the available tools to answer the user's question.`,
     `If you are unable to answer the user's question based on the available information, just say so. Do not make up an answer.`,
-    `Respond to the user's question in a helpful, concise and friendly manner. Always reply to the user in plain text - do not reply in markdown or mention JSON or anything about tools.`,
+    `Respond to the user's question in a helpful, concise and friendly manner. Always reply to the user in plain text or markdown. Do not mention JSON or anything about tools.`,
     `If you search DuckDuckGo, always use the fetch_content tool to actually fetch and parse the results that look relevant to the user's question.`,
   ]
 
