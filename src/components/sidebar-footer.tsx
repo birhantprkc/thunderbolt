@@ -66,6 +66,12 @@ export function SidebarFooter() {
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem asChild>
+                  <Link to="/settings/dev-settings">
+                    <Terminal className="mr-2 size-4" />
+                    Dev Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
                   <Link to="/devtools">
                     <Terminal className="mr-2 size-4" />
                     Dev Tools

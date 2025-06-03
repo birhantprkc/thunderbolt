@@ -6,6 +6,7 @@ import ChatLayout from '@/chats/layout2'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { useMcpSync } from '@/hooks/use-mcp-sync'
 import AccountsSettingsPage from '@/settings/accounts'
+import DevSettingsPage from '@/settings/dev-settings'
 import { default as Settings } from '@/settings/index'
 import McpServersPage from '@/settings/mcp-servers'
 import ModelsPage from '@/settings/models'
@@ -59,6 +60,7 @@ function AppContent({ initData }: { initData: InitData }) {
             <Route path="mcp-servers" element={<McpServersPage />} />
             <Route path="accounts" element={<AccountsSettingsPage />} />
             <Route path="thunderbolt-bridge" element={<ThunderboltBridgeSettingsPage />} />
+            <Route path="dev-settings" element={<DevSettingsPage />} />
           </Route>
 
           <Route path="ui-kit" element={<UiKitPage />} />
