@@ -52,6 +52,9 @@ jobs:
           toolchain: nightly
           cache: true
 
+      - name: Install sccache
+        run: cargo install sccache
+
       - name: install Linux dependencies
         if: matrix.os == 'ubuntu-22.04'
         run: |
@@ -104,6 +107,9 @@ jobs:
         with:
           toolchain: nightly
           cache: true
+
+      - name: Install sccache
+        run: cargo install sccache
 
       - name: setup JDK 17
         uses: actions/setup-java@v4
@@ -166,6 +172,9 @@ jobs:
         with:
           toolchain: nightly
           cache: true
+
+      - name: Install sccache
+        run: cargo install sccache
 
       - name: install iOS target
         run: rustup target add aarch64-apple-ios
