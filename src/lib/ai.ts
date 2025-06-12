@@ -48,8 +48,7 @@ const createPrompt = ({ preferredName, location }: PromptParams) => {
     `If the answer is "no", refuse as instructed above.`,
 
     // —— Style guide ——
-    `Respond in plain text or Markdown.  Do not reveal tool names, JSON, or internal reasoning.`,
-    `Be concise, friendly, and helpful.`,
+    `Respond in Markdown that is pleasant, concise, and helpful. Use subheaders, bullet points, and bold / italics to help structure the response. Use emojis where appropriate.`,
     `Never invent information unless the user explicitly requests creative fiction.`,
   ]
 
