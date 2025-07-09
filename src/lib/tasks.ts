@@ -1,3 +1,4 @@
+import { createModel } from '@/ai/fetch'
 import { AnyDrizzleDatabase } from '@/db/database-interface'
 import { emailMessagesTable, modelsTable, tasksTable } from '@/db/schema'
 import { ImapSyncer } from '@/imap/sync'
@@ -5,7 +6,6 @@ import { generateObject } from 'ai'
 import { eq, isNotNull } from 'drizzle-orm'
 import { v7 as uuidv7 } from 'uuid'
 import { z } from 'zod'
-import { createModel } from './ai'
 
 export type RefreshTasksParams = {
   db: AnyDrizzleDatabase
@@ -34,7 +34,8 @@ export const refreshTasks = async ({ db }: RefreshTasksParams) => {
 
   const emailsContext = messages
     .map(
-      (message) => `Message ID: ${message.id}\nSubject: ${message.subject || 'No subject'}\nFrom: ${message.fromAddress || 'Unknown'}\nSnippet: ${message.textBody?.substring(0, 300) || 'No content'}`
+      (message) =>
+        `Message ID: ${message.id}\nSubject: ${message.subject || 'No subject'}\nFrom: ${message.fromAddress || 'Unknown'}\nSnippet: ${message.textBody?.substring(0, 300) || 'No content'}`,
     )
     .join('\n\n')
 

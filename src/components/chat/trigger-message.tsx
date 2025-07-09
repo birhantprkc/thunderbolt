@@ -1,5 +1,6 @@
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { cn } from '@/lib/utils'
+import { MessageSquareText } from 'lucide-react'
+import { Expandable } from '../ui/expandable'
 import { StreamingMarkdown } from './streaming-markdown'
 
 interface TriggerMessageProps {
@@ -34,16 +35,19 @@ export const TriggerMessage = ({ title, prompt, className }: TriggerMessageProps
     </div>
 
     {/* Accordion with automation title & prompt */}
-    <Accordion type="single" collapsible className="w-full max-w-[696px]">
-      <AccordionItem value="automation-trigger" className="border-none">
-        <AccordionTrigger className="bg-secondary hover:bg-secondary/80 px-4 py-2.5 rounded-md data-[state=open]:rounded-t-md data-[state=open]:rounded-b-none text-left w-full whitespace-pre-wrap">
+    <Expandable
+      title={
+        <span className="text-secondary-foreground text-sm font-medium whitespace-pre-wrap">
           {title || 'Automation'}
-        </AccordionTrigger>
-        <AccordionContent className="bg-secondary rounded-b-md px-4 py-3">
-          <StreamingMarkdown content={prompt} className="text-secondary-foreground leading-relaxed" />
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+        </span>
+      }
+      bgColor="bg-secondary"
+      className="w-full max-w-[696px]"
+      icon={<MessageSquareText className="h-4 w-4 text-secondary-foreground" />}
+      defaultOpen={false}
+    >
+      <StreamingMarkdown content={prompt} className="text-secondary-foreground leading-relaxed" />
+    </Expandable>
   </div>
 )
 

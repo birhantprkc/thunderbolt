@@ -1,0 +1,82 @@
+import { cn } from '@/lib/utils'
+import * as AccordionPrimitive from '@radix-ui/react-accordion'
+import { ChevronRight } from 'lucide-react'
+import * as React from 'react'
+
+export type ExpandableProps = {
+  /** The title displayed in the accordion trigger */
+  title: React.ReactNode
+  /** The content to display when expanded */
+  children: React.ReactNode
+  /** Background color class for the accordion */
+  bgColor?: string
+  /** Whether the accordion should be open by default */
+  defaultOpen?: boolean
+  /** Additional class names for the root container */
+  className?: string
+  /** Optional click handler for the trigger */
+  onToggle?: (isOpen: boolean) => void
+  /** Optional custom icon to render instead of the default spinner/completion icon */
+  icon?: React.ReactNode
+}
+
+/**
+ * A purpose-built accordion component for single-item use cases.
+ * Features consistent styling, thinking states, and proper animations.
+ */
+export const Expandable = ({
+  title,
+  children,
+  bgColor = 'bg-white',
+  defaultOpen = false,
+  className,
+  onToggle,
+  icon,
+}: ExpandableProps) => {
+  const [isOpen, setIsOpen] = React.useState(defaultOpen)
+
+  const handleValueChange = (value: string) => {
+    const newIsOpen = value === 'item'
+    setIsOpen(newIsOpen)
+    onToggle?.(newIsOpen)
+  }
+
+  return (
+    <AccordionPrimitive.Root
+      type="single"
+      collapsible
+      value={isOpen ? 'item' : ''}
+      onValueChange={handleValueChange}
+      className={cn('rounded-lg shadow-sm', bgColor, className)}
+    >
+      <AccordionPrimitive.Item value="item" className="border-none">
+        <AccordionPrimitive.Header className="flex">
+          <AccordionPrimitive.Trigger
+            className={cn(
+              'flex flex-1 items-center justify-between gap-2 px-4 py-2.5 text-left transition-all outline-none',
+              'hover:bg-black/5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              'rounded-lg data-[state=open]:rounded-b-none',
+              'disabled:pointer-events-none disabled:opacity-50',
+            )}
+          >
+            <div className={cn('flex items-center', icon ? 'gap-2' : '')}>
+              {icon}
+              <span className="text-sm font-medium text-gray-700">{title}</span>
+            </div>
+            <ChevronRight
+              className={cn('h-4 w-4 text-gray-500 transition-transform duration-200', isOpen && 'rotate-90')}
+            />
+          </AccordionPrimitive.Trigger>
+        </AccordionPrimitive.Header>
+        <AccordionPrimitive.Content
+          className={cn(
+            'overflow-hidden text-sm transition-all',
+            'data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down',
+          )}
+        >
+          <div className="px-4 pt-2 pb-3">{children}</div>
+        </AccordionPrimitive.Content>
+      </AccordionPrimitive.Item>
+    </AccordionPrimitive.Root>
+  )
+}

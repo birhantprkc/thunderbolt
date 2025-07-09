@@ -1,7 +1,7 @@
+import { aiFetchStreamingResponse } from '@/ai/fetch'
 import ChatUI from '@/components/chat/chat-ui'
 import { chatThreadsTable, modelsTable, promptsTable, settingsTable } from '@/db/tables'
 import { useDatabase } from '@/hooks/use-database'
-import { aiFetchStreamingResponse } from '@/lib/ai'
 import { getOrCreateChatStore } from '@/lib/chat-store-registry'
 import { getSelectedModel } from '@/lib/dal'
 import { useMCP } from '@/lib/mcp-provider'

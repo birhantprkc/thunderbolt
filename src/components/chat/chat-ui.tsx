@@ -4,12 +4,13 @@ import { cn } from '@/lib/utils'
 import { Model } from '@/types'
 import type { UseChatHelpers } from '@ai-sdk/react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { Check, Loader2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../ui/button'
+import { Expandable } from '../ui/expandable'
 import { PromptInput } from '../ui/prompt-input'
 import { AgentToolResponse } from './agent-tool-response'
 import { ChatLoadingIndicator } from './chat-loading-indicator'
-import { Reasoning } from './reasoning'
 import { StreamingMarkdown } from './streaming-markdown'
 import { TriggerMessage } from './trigger-message'
 
@@ -190,27 +191,46 @@ export default function ChatUI({ chatHelpers, models, selectedModel, onModelChan
               }
               if (message.role === 'assistant') {
                 return (
-                  <div key={i} className="space-y-2 p-4 rounded-md bg-secondary mr-auto">
-                    {message.parts
-                      .filter((part) => part.type === 'tool-invocation')
-                      .map((part, j) => (
-                        <AgentToolResponse key={j} part={part} />
-                      ))}
-                    {message.parts
-                      .filter((part) => part.type === 'reasoning')
-                      .map((part, j) => (
-                        <Reasoning key={j} text={part.text} />
-                      ))}
-                    {message.parts
-                      .filter((part) => part.type === 'text')
-                      .map((part, j) => (
-                        <StreamingMarkdown
-                          key={j}
-                          content={part.text}
-                          isStreaming={chatHelpers.status === 'streaming' && i === chatHelpers.messages.length - 1}
-                          className="text-secondary-foreground leading-relaxed"
-                        />
-                      ))}
+                  <div key={i} className="flex flex-col gap-2 max-w-full">
+                    {message.parts.map((part, partIdx) => {
+                      const isLastMessage = i === chatHelpers.messages.length - 1
+                      const isLastPart = partIdx === message.parts.length - 1
+
+                      switch (part.type) {
+                        case 'text':
+                          return (
+                            <div key={partIdx} className="space-y-2 p-4 rounded-md bg-secondary mr-auto w-full">
+                              <StreamingMarkdown
+                                content={part.text}
+                                isStreaming={chatHelpers.status === 'streaming' && isLastMessage && isLastPart}
+                                className="text-secondary-foreground leading-relaxed"
+                              />
+                            </div>
+                          )
+                        case 'tool-invocation':
+                          return <AgentToolResponse key={partIdx} part={part} />
+                        case 'reasoning':
+                          return (
+                            <Expandable
+                              key={partIdx}
+                              title={<span className="text-secondary-foreground">Reasoning</span>}
+                              bgColor="bg-secondary"
+                              icon={
+                                chatHelpers.status === 'streaming' && isLastMessage && isLastPart ? (
+                                  <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
+                                ) : (
+                                  <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                )
+                              }
+                              defaultOpen={false}
+                            >
+                              <div className="text-secondary-foreground leading-relaxed text-sm">{part.text}</div>
+                            </Expandable>
+                          )
+                        default:
+                          return null
+                      }
+                    })}
                   </div>
                 )
               } else if (message.role === 'user') {
@@ -232,7 +252,7 @@ export default function ChatUI({ chatHelpers, models, selectedModel, onModelChan
 
             {/* Show error message if there's an error */}
             {chatHelpers.error && (
-              <div className="p-4 rounded-md bg-destructive/10 border border-destructive/20 mr-auto">
+              <div className="p-4 rounded-md bg-destructive/10 border border-destructive/20 mr-auto w-full">
                 <p className="text-destructive font-medium mb-1">Error</p>
                 <p className="text-destructive/80 text-sm">
                   {chatHelpers.error.message || 'An unexpected error occurred. Please try again.'}
