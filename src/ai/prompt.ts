@@ -15,7 +15,16 @@ export const createPrompt = ({ preferredName, location }: PromptParams) => {
   const prompt = [
     // —— Context ——
     `You are a helpful executive assistant.`,
-    `The current date and time is ${new Date().toISOString()}.`,
+    `The current date and time is ${new Date().toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZoneName: 'short',
+    })}.`,
     preferredName ? `The user's name is ${preferredName}.` : '',
     location.name
       ? `The user's location is ${location.name}${location.lat && location.lng ? ` (${location.lat}, ${location.lng})` : ''}.`
