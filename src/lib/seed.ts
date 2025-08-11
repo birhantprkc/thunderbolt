@@ -27,9 +27,19 @@ export const seedModels = async () => {
       {
         id: uuidv7(),
         name: 'Qwen 3',
+        provider: 'flower' as const,
+        model: 'qwen/qwen3-235b',
+        isSystem: 1,
+        enabled: 1,
+        isConfidential: 1,
+        toolUsage: 1,
+      },
+      {
+        id: uuidv7(),
+        name: 'Qwen 3',
         provider: 'thunderbolt' as const,
         model: 'qwen3-235b-a22b-instruct-2507',
-        isSystem: 1,
+        isSystem: 0,
         enabled: 1,
         isConfidential: 0,
       },
@@ -99,6 +109,14 @@ export const seedSettings = async () => {
     .insert(settingsTable)
     .values({
       key: 'is_triggers_enabled',
+      value: 'false',
+    })
+    .onConflictDoNothing()
+
+  await db
+    .insert(settingsTable)
+    .values({
+      key: 'disable_flower_encryption',
       value: 'false',
     })
     .onConflictDoNothing()

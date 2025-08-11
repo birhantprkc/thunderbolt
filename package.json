@@ -20,6 +20,7 @@
     "check": "bun run type-check && bun run lint && bun run format-check"
   },
   "dependencies": {
+    "@ai-sdk-tool/parser": "^2.0.11",
     "@ai-sdk/openai": "^2.0.4",
     "@ai-sdk/openai-compatible": "^1.0.2",
     "@ai-sdk/provider-utils": "^3.0.1",
@@ -28,7 +29,7 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@flwr/flwr": "^0.1.11",
+    "@flwr/flwr": "^0.1.13",
     "@hookform/resolvers": "^5.1.1",
     "@modelcontextprotocol/sdk": "^1.15.0",
     "@openrouter/ai-sdk-provider": "^1.1.0",
@@ -101,6 +102,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "globals": "^16.3.0",
     "jsdom": "^26.1.0",
+    "msw": "^2.0.0",
     "prettier": "^3.6.2",
     "tailwindcss": "4.1.11",
     "tsx": "^4.20.3",

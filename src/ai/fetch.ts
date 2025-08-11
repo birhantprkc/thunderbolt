@@ -2,9 +2,8 @@ import { createPrompt } from '@/ai/prompt'
 import { DatabaseSingleton } from '@/db/singleton'
 import { modelsTable } from '@/db/tables'
 import { getCloudUrl } from '@/lib/config'
-import { getSetting } from '@/lib/dal'
+import { getBooleanSetting, getSetting } from '@/lib/dal'
 import { fetch } from '@/lib/fetch'
-import { handleFlowerChatStream } from '@/lib/flower'
 import { createToolset, getAvailableTools } from '@/lib/tools'
 import { Model, SaveMessagesFunction, type ThunderboltUIMessage } from '@/types'
 import { createOpenAI } from '@ai-sdk/openai'
@@ -16,6 +15,7 @@ import { LanguageModelV2 } from '@ai-sdk/provider'
 // OpenRouter is working on a new version of their SDK that is compatible with Vercel AI SDK v5. We'll uncomment this when it's ready.
 // import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 
+import { createFlowerProvider } from '@/flower'
 import {
   convertToModelMessages,
   experimental_createMCPClient,
@@ -25,7 +25,8 @@ import {
   type ToolSet,
 } from 'ai'
 import { eq } from 'drizzle-orm'
-import { createDefaultMiddleware } from './middleware/default'
+import { createConfiguredFlowerClient } from './flower'
+import { createDefaultMiddleware, createFlowerMiddleware } from './middleware/default'
 
 export type MCPClient = Awaited<ReturnType<typeof experimental_createMCPClient>>
 
@@ -45,6 +46,23 @@ type AiFetchStreamingResponseOptions = {
 
 export const createModel = async (modelConfig: Model): Promise<LanguageModelV2> => {
   switch (modelConfig.provider) {
+    case 'flower': {
+      // Check if encryption should be disabled via dev settings
+      const disableEncryption = await getBooleanSetting('disable_flower_encryption', false)
+
+      // Enable encryption for confidential models unless explicitly disabled in dev settings
+      const shouldEncrypt = Boolean(modelConfig.isConfidential) && !disableEncryption
+
+      const cloudUrl = await getCloudUrl()
+      const client = await createConfiguredFlowerClient(cloudUrl)
+
+      const provider = createFlowerProvider({
+        client,
+        encrypt: shouldEncrypt,
+      })
+
+      return provider(modelConfig.model)
+    }
     case 'thunderbolt': {
       const cloudUrl = await getCloudUrl()
       const openaiCompatible = createOpenAICompatible({
@@ -140,19 +158,20 @@ export const aiFetchStreamingResponse = async ({
     },
   })
 
-  // Flower is a special case that uses a custom SDK that is not compatible with the Vercel AI SDK.
-  if (model.provider === 'flower') {
-    const tools = model.toolUsage === 1 ? await getAvailableTools() : undefined
-    return handleFlowerChatStream({ messages, systemPrompt, model: model.model, tools })
-  }
-
   try {
     const baseModel = await createModel(model)
+
+    // Use Flower-specific middleware for the Flower provider to enable enhanced tool support
+    // Other providers already have native function calling support
+    const middleware =
+      model.provider === 'flower'
+        ? createFlowerMiddleware(Boolean(model.startWithReasoning))
+        : createDefaultMiddleware(Boolean(model.startWithReasoning))
 
     const wrappedModel = wrapLanguageModel({
       providerId: model.provider,
       model: baseModel,
-      middleware: createDefaultMiddleware(Boolean(model.startWithReasoning)),
+      middleware,
     })
 
     const result = streamText({
@@ -169,6 +188,8 @@ export const aiFetchStreamingResponse = async ({
       //   } satisfies OpenAICompatibleProviderOptions,
       // },
       onStepFinish: (step) => {
+        if (process.env.NODE_ENV === 'test') return
+
         console.log('step', {
           text: step.text,
           finishReason: step.finishReason,
@@ -183,6 +204,8 @@ export const aiFetchStreamingResponse = async ({
         })
       },
       onFinish: (finish) => {
+        if (process.env.NODE_ENV === 'test') return
+
         console.log('finish', {
           text: finish.text,
           finishReason: finish.finishReason,

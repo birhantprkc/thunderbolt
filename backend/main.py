@@ -52,6 +52,7 @@ def create_model_transformer(
 
         Only transforms whitelisted Thunderbolt models. Other models pass through unchanged.
         """
+        logger = logging.getLogger(__name__)
         try:
             # Parse the JSON body
             data = json.loads(body.decode("utf-8"))
@@ -76,9 +77,7 @@ def create_model_transformer(
 
         except Exception as e:
             # If transformation fails, return original body
-            import logging
-
-            logging.getLogger(__name__).warning(f"Failed to transform model: {e}")
+            logger.warning(f"Model transformation failed: {e}")
             return body
 
     return transformer
@@ -259,12 +258,8 @@ async def flower_proxy_endpoint(
     """Flower AI proxy endpoint."""
     logger = logging.getLogger(__name__)
 
-    logger.info(f"Flower proxy request: {request.method} /flower/{path}")
-    logger.info(f"Headers: {dict(request.headers)}")
-
     # Handle OPTIONS preflight requests
     if request.method == "OPTIONS":
-        logger.info("Handling OPTIONS preflight request")
         return JSONResponse({"status": "ok"})
 
     # Get the configuration for this path
@@ -273,41 +268,21 @@ async def flower_proxy_endpoint(
         logger.error("Flower AI proxy not configured")
         raise HTTPException(status_code=404, detail="Flower AI proxy not configured")
 
-    # Log the request body if it's a POST
+    # Handle body consumption for POST requests
     if request.method == "POST":
         body = await request.body()
-        logger.info(f"Request body: {body.decode('utf-8') if body else 'empty'}")
         # Store the body so it can be read again by the proxy
         # Note: This is a workaround for FastAPI's request body consumption
         request._body = body  # type: ignore[attr-defined]
 
-    # Check if the client already has an API key in the Authorization header
-    existing_auth = request.headers.get("authorization", "")
-    logger.info(
-        f"Existing authorization header: {existing_auth[:20]}..."
-        if existing_auth
-        else "No existing auth"
-    )
-
-    # For Flower AI, the client already provides the API key, so we just pass it through
-    # We don't need to generate a new one
-    if existing_auth and existing_auth.startswith("Bearer fk_"):
-        logger.info("Using client-provided Flower API key")
-        # Don't modify the config.api_key - let the proxy pass through the existing header
-    else:
-        logger.info("No valid Flower API key in request, request may fail")
-
     # Don't override the API key in config - the proxy will pass through existing headers
     config.api_key = ""
 
-    # Proxy the request
-    logger.info(f"Proxying request to {config.target_url}/{path}")
+    # Use the unified proxy method
     try:
-        result = await proxy_service.proxy_request(request, path, config)
-        logger.info("Proxy request successful")
-        return result
+        return await proxy_service.proxy_request(request, path, config)
     except Exception as e:
-        logger.error(f"Proxy request failed: {str(e)}", exc_info=True)
+        logger.error(f"Flower proxy request failed: {str(e)}", exc_info=True)
         raise
 
 

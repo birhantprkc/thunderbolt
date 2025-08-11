@@ -1,3 +1,4 @@
+import contextlib
 import gzip
 import logging
 import zlib
@@ -55,10 +56,25 @@ class ProxyService:
     """Service to handle proxying requests to external APIs"""
 
     def __init__(self) -> None:
+        # Try to enable HTTP/2 if available
+        http2_available = False
+        try:
+            import h2  # noqa: F401
+
+            http2_available = True
+        except ImportError:
+            logger.debug(
+                "HTTP/2 not available (install httpx[http2] for HTTP/2 support)"
+            )
+
         self.client = httpx.AsyncClient(
             timeout=httpx.Timeout(30.0, connect=5.0),
             follow_redirects=True,
-            limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
+            limits=httpx.Limits(
+                max_keepalive_connections=20,  # Increased for better connection reuse
+                max_connections=100,  # Support more concurrent requests
+            ),
+            http2=http2_available,  # Enable HTTP/2 if available
         )
         self.configs: dict[str, ProxyConfig] = {}
 
@@ -78,6 +94,20 @@ class ProxyService:
         # Implement your auth logic here
         # For now, just check if Authorization header exists
         return "authorization" in request.headers
+
+    def _is_ai_service(self, config: ProxyConfig) -> bool:
+        """Check if the target URL is an AI service that benefits from passthrough."""
+        ai_service_indicators = [
+            "flower",
+            "openai",
+            "anthropic",
+            "cohere",
+            "huggingface",
+            "replicate",
+            "fireworks",
+        ]
+        target_url_lower = config.target_url.lower()
+        return any(indicator in target_url_lower for indicator in ai_service_indicators)
 
     def prepare_headers(self, request: Request, config: ProxyConfig) -> dict[str, str]:
         """Prepare headers for the proxied request"""
@@ -132,10 +162,6 @@ class ProxyService:
 
             # Remove any query parameters that should be stripped
             for param in config.strip_query_params:
-                if param in query_params:
-                    logger.debug(
-                        f"Stripping query parameter '{param}' from client request"
-                    )
                 query_params.pop(param, None)
 
         # Add API key as query parameter if configured
@@ -144,35 +170,19 @@ class ProxyService:
 
         return query_params
 
-    async def proxy_streaming_request(
-        self,
-        request: Request,
-        path: str,
-        config: ProxyConfig,
-        body: bytes | None = None,
-    ) -> StreamingResponse:
-        """Proxy a streaming request to the target URL"""
+    async def proxy_request(
+        self, request: Request, path: str, config: ProxyConfig
+    ) -> Response | StreamingResponse:
+        """Unified proxy that handles both streaming and buffered requests."""
 
-        # If body wasn't passed in, read it from the request
-        if body is None:
-            body = await request.body()
+        # Check if we need transformation first (to decide if we need to buffer)
+        needs_transformation = config.request_transformer is not None
 
-        # Build target URL
-        target_url = f"{config.target_url}/{path}"
+        # Read body only if we need to transform or inspect it
+        body = await request.body()
 
-        # Handle query parameters
-        if request.url.query or (config.api_key and config.api_key_as_query_param):
-            query_params = self._process_query_params(request, config)
-            # Build query string
-            query_string = urlencode(query_params, doseq=True)
-            if query_string:
-                target_url = f"{target_url}?{query_string}"
-
-        # Prepare headers
-        headers = self.prepare_headers(request, config)
-
-        # Apply request transformer if configured
-        if config.request_transformer is not None and body:
+        # Apply request transformer if configured (for Fireworks model prefixes, etc.)
+        if needs_transformation and body:
             transformer = cast(Callable[[bytes], bytes], config.request_transformer)
             try:
                 body = transformer(body)
@@ -181,47 +191,6 @@ class ProxyService:
                 raise HTTPException(
                     status_code=400, detail="Invalid request format"
                 ) from e
-
-        try:
-            # Make the proxied request with streaming
-            logger.info(f"Proxying streaming request to: {target_url}")
-
-            async def stream_response() -> Any:
-                async with self.client.stream(
-                    method=request.method,
-                    url=target_url,
-                    headers=headers,
-                    content=body,
-                    follow_redirects=False,
-                ) as response:
-                    response.raise_for_status()
-
-                    # Stream the response content
-                    async for chunk in response.aiter_bytes():
-                        yield chunk
-
-            # For streaming, we directly create the streaming response
-            return StreamingResponse(
-                stream_response(),
-                media_type="text/event-stream",
-            )
-
-        except httpx.TimeoutException as e:
-            raise HTTPException(status_code=504, detail="Gateway timeout") from e
-        except httpx.RequestError as e:
-            logger.error(f"Proxy streaming request failed: {e}")
-            raise HTTPException(status_code=502, detail="Bad gateway") from e
-
-    async def proxy_request(
-        self, request: Request, path: str, config: ProxyConfig
-    ) -> Response:
-        """Proxy a request to the target URL"""
-
-        # Read the request body once at the beginning
-        body = await request.body()
-        logger.info(f"[ProxyService] Proxying {request.method} request to path: {path}")
-        logger.info(f"[ProxyService] Target URL base: {config.target_url}")
-        logger.info(f"[ProxyService] Has API key: {'Yes' if config.api_key else 'No'}")
 
         # Check if this is a streaming request
         is_streaming = False
@@ -244,10 +213,74 @@ class ProxyService:
             if "text/event-stream" in accept:
                 is_streaming = True
 
-        # Use streaming proxy if needed
+        # Use streaming approach if needed
         if is_streaming:
-            return await self.proxy_streaming_request(request, path, config, body)
+            return await self._proxy_streaming(request, path, config, body)
 
+        # Otherwise use buffered approach for full response processing
+        return await self._proxy_buffered(request, path, config, body)
+
+    async def _proxy_streaming(
+        self, request: Request, path: str, config: ProxyConfig, body: bytes
+    ) -> StreamingResponse:
+        """Handle streaming proxy requests without buffering the response."""
+        # Build target URL
+        target_url = f"{config.target_url}/{path}"
+
+        # Handle query parameters
+        if request.url.query:
+            query_string = str(request.url.query)
+            if query_string:
+                target_url = f"{target_url}?{query_string}"
+
+        # Prepare headers
+        headers = self.prepare_headers(request, config)
+
+        # Build and send the request
+        req = self.client.build_request(
+            method=request.method,
+            url=target_url,
+            headers=headers,
+            content=body,
+        )
+        upstream = await self.client.send(req, stream=True, follow_redirects=False)
+
+        # Clean response headers - remove hop-by-hop headers
+        hop_by_hop = {
+            "transfer-encoding",
+            "connection",
+            "keep-alive",
+            "proxy-authenticate",
+            "proxy-authorization",
+            "te",
+            "trailers",
+            "upgrade",
+            "content-length",
+        }
+        upstream_headers = {
+            k: v for k, v in upstream.headers.items() if k.lower() not in hop_by_hop
+        }
+
+        media_type = upstream_headers.get("content-type")
+
+        async def body_iter():
+            try:
+                async for chunk in upstream.aiter_raw():
+                    yield chunk
+            finally:
+                await upstream.aclose()
+
+        return StreamingResponse(
+            body_iter(),
+            status_code=upstream.status_code,
+            media_type=media_type,
+            headers=upstream_headers,
+        )
+
+    async def _proxy_buffered(
+        self, request: Request, path: str, config: ProxyConfig, body: bytes
+    ) -> Response:
+        """Handle buffered proxy requests with full response processing."""
         # Build target URL
         target_url = f"{config.target_url}/{path}"
 
@@ -262,31 +295,8 @@ class ProxyService:
         # Prepare headers
         headers = self.prepare_headers(request, config)
 
-        # Apply request transformer if configured
-        if config.request_transformer is not None and body:
-            transformer = cast(Callable[[bytes], bytes], config.request_transformer)
-            try:
-                body = transformer(body)
-            except Exception as e:
-                logger.error(f"Request transformation failed: {e}")
-                raise HTTPException(
-                    status_code=400, detail="Invalid request format"
-                ) from e
-
         try:
             # Make the proxied request
-            logger.info(f"[ProxyService] Full target URL: {target_url}")
-            logger.info(f"[ProxyService] Request headers: {headers}")
-            logger.info(f"[ProxyService] Body length: {len(body) if body else 0}")
-            # Log request body for debugging
-            if body:
-                try:
-                    body_str = body.decode("utf-8")
-                    logger.info(f"[ProxyService] Request body: {body_str}")
-                except Exception:
-                    logger.info(
-                        f"[ProxyService] Binary body (first 100 bytes): {body[:100]!r}"
-                    )
             response = await self.client.request(
                 method=request.method,
                 url=target_url,
@@ -294,52 +304,36 @@ class ProxyService:
                 content=body,
                 follow_redirects=False,
             )
-            logger.info(f"[ProxyService] Response status: {response.status_code}")
-            logger.info(f"[ProxyService] Response headers: {dict(response.headers)}")
 
             # Create response headers
             response_headers = dict(response.headers)
 
-            # Debug logging for compression analysis
-            logger.info(f"Original response headers: {response_headers}")
+            # Check for compression
             content_encoding = response_headers.get("content-encoding", "").lower()
-            logger.info(f"Response encoding: {content_encoding}")
 
             # Get response content
             content = response.read()
 
             # Check if decompression is needed based on content-encoding header
             # httpx may automatically decompress but not remove the content-encoding header
-            if content_encoding:
+            if isinstance(content, bytes | bytearray) and content_encoding:
                 try:
                     if content_encoding in ["br", "brotli"]:
                         if HAS_BROTLI:
                             # Try to decompress - if it fails, content was already decompressed
-                            try:
+                            with contextlib.suppress(brotli.error):
                                 content = brotli.decompress(content)
-                                logger.debug("Successfully decompressed brotli content")
-                            except brotli.error:
-                                # Content was already decompressed by httpx
-                                logger.debug("Content already decompressed by httpx")
                         else:
                             raise HTTPException(
                                 status_code=500,
                                 detail="Server configuration error: brotli support not available",
                             )
                     elif content_encoding == "gzip":
-                        try:
+                        with contextlib.suppress(gzip.BadGzipFile):
                             content = gzip.decompress(content)
-                            logger.debug("Successfully decompressed gzip content")
-                        except gzip.BadGzipFile:
-                            # Content was already decompressed by httpx
-                            logger.debug("Content already decompressed by httpx")
                     elif content_encoding == "deflate":
-                        try:
+                        with contextlib.suppress(zlib.error):
                             content = zlib.decompress(content)
-                            logger.debug("Successfully decompressed deflate content")
-                        except zlib.error:
-                            # Content was already decompressed by httpx
-                            logger.debug("Content already decompressed by httpx")
                 except HTTPException:
                     # Re-raise HTTP exceptions (like missing brotli support)
                     raise
@@ -355,14 +349,6 @@ class ProxyService:
             response_headers.pop("content-encoding", None)
             response_headers.pop("transfer-encoding", None)
             response_headers.pop("vary", None)
-
-            # Log for debugging
-            logger.info(f"Response headers before cleanup: {response_headers}")
-            logger.info(f"Response status: {response.status_code}")
-            logger.info(
-                f"Content type: {response_headers.get('content-type', 'unknown')}"
-            )
-            logger.info(f"Content length: {len(content)}")
 
             # Detect and handle content type
             content_type = response_headers.get(
@@ -398,24 +384,12 @@ class ProxyService:
                     content_type = "application/json; charset=utf-8"
                     response_headers["content-type"] = content_type
 
-                    # Log success
-                    logger.info(
-                        f"Successfully processed JSON response: {content[:100]!r}"
-                    )
                 except Exception as e:
                     # Log the error but continue with original content
                     logger.error(f"Error processing JSON content: {e}")
 
             # Set the correct content length
             response_headers["content-length"] = str(len(content))
-
-            # For debugging: log first 200 chars if it's text content
-            if "text/" in content_type or "application/json" in content_type:
-                try:
-                    content_preview = content.decode("utf-8")[:200]
-                    logger.info(f"Content preview: {content_preview}")
-                except Exception:
-                    logger.info("Content is not valid UTF-8")
 
             # For 500 errors from Fireworks, return a user-friendly error
             if response.status_code == 500 and "fireworks" in target_url:
