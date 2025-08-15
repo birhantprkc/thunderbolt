@@ -38,7 +38,7 @@ export const DeleteChatDialog = forwardRef<DeleteChatDialogRef, DeleteChatDialog
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogTitle>Delete this chat?</AlertDialogTitle>
             <AlertDialogDescription>This will permanently delete this chat.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
