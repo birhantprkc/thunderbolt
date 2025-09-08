@@ -1,15 +1,15 @@
 import { settingsTable } from '@/db/tables'
 import { useDebounce } from '@/hooks/use-debounce'
-import { cn } from '@/lib/utils'
+import { cn, snakeCased } from '@/lib/utils'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { eq } from 'drizzle-orm'
 import ky from 'ky'
 import { ChevronsUpDown } from 'lucide-react'
 import { useEffect, useReducer, useRef } from 'react'
 
-import { ThemeToggle } from '@/components/theme-toggle'
 import { TelemetryRequiredModal, type TelemetryRequiredModalRef } from '@/components/telemetry-required-modal'
 import { TelemetryWarningModal, type TelemetryWarningModalRef } from '@/components/telemetry-warning-modal'
+import { ThemeToggle } from '@/components/theme-toggle'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,15 +28,15 @@ import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { SectionCard } from '@/components/ui/section-card'
 
+import { Switch } from '@/components/ui/switch'
 import { DatabaseSingleton } from '@/db/singleton'
+import { trackEvent, type EventType } from '@/lib/analytics'
+import { getPreferencesSettings, updateBooleanSetting } from '@/lib/dal'
 import { resetAppDir } from '@/lib/fs'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { usePostHog } from 'posthog-js/react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { Switch } from '@/components/ui/switch'
-import { usePostHog } from 'posthog-js/react'
-import { trackEvent } from '@/lib/analytics'
-import { getPreferencesSettings, updateBooleanSetting } from '@/lib/dal'
 
 interface LocationData {
   name: string
@@ -333,7 +333,6 @@ export default function PreferencesSettingsPage() {
       experimentalFeatureTasks: false,
     })
 
-    // Track that all features were disabled
     trackEvent('settings_experimental_feature_automations_disabled')
     trackEvent('settings_experimental_feature_tasks_disabled')
   }
@@ -415,7 +414,8 @@ export default function PreferencesSettingsPage() {
     value: boolean,
   ) => {
     if (value && !settings?.dataCollection) {
-      return { requiresTelemetry: true, featureName: featureName }
+      telemetryRequiredModalRef.current?.open(featureName)
+      return
     }
 
     const currentValues = previewFeaturesForm.getValues()
@@ -424,22 +424,8 @@ export default function PreferencesSettingsPage() {
       [featureName]: value,
     })
 
-    // Track the specific feature that changed
-    if (featureName === 'experimentalFeatureAutomations') {
-      if (value) {
-        trackEvent('settings_experimental_feature_automations_enabled')
-      } else {
-        trackEvent('settings_experimental_feature_automations_disabled')
-      }
-    } else if (featureName === 'experimentalFeatureTasks') {
-      if (value) {
-        trackEvent('settings_experimental_feature_tasks_enabled')
-      } else {
-        trackEvent('settings_experimental_feature_tasks_disabled')
-      }
-    }
-
-    return { requiresTelemetry: false }
+    const eventName = `settings_${snakeCased(featureName)}_${value ? 'enabled' : 'disabled'}`
+    trackEvent(eventName as EventType)
   }
 
   const handleLocationSave = async (location: LocationData) => {
@@ -622,47 +608,45 @@ export default function PreferencesSettingsPage() {
 
         <Form {...previewFeaturesForm}>
           <form className="flex flex-col gap-4" onSubmit={(e) => e.preventDefault()}>
-            <FormField
-              control={previewFeaturesForm.control}
-              name="experimentalFeatureAutomations"
-              render={({ field }) => (
-                <div className="flex-row flex items-center gap-4">
-                  <div className="flex-1">
-                    <label className="text-sm font-medium">Automations</label>
-                  </div>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={async (value) => {
-                      const result = await handleExperimentalFeaturesToggle('experimentalFeatureAutomations', value)
-                      if (result.requiresTelemetry) {
-                        telemetryRequiredModalRef.current?.open(result.featureName)
+            {postHog.isFeatureEnabled('automations') && (
+              <FormField
+                control={previewFeaturesForm.control}
+                name="experimentalFeatureAutomations"
+                render={({ field }) => (
+                  <div className="flex-row flex items-center gap-4">
+                    <div className="flex-1">
+                      <label className="text-sm font-medium">Automations</label>
+                    </div>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={async (value) =>
+                        await handleExperimentalFeaturesToggle('experimentalFeatureAutomations', value)
                       }
-                    }}
-                  />
-                </div>
-              )}
-            />
+                    />
+                  </div>
+                )}
+              />
+            )}
 
-            <FormField
-              control={previewFeaturesForm.control}
-              name="experimentalFeatureTasks"
-              render={({ field }) => (
-                <div className="flex-row flex items-center gap-4">
-                  <div className="flex-1">
-                    <label className="text-sm font-medium">Tasks</label>
-                  </div>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={async (value) => {
-                      const result = await handleExperimentalFeaturesToggle('experimentalFeatureTasks', value)
-                      if (result.requiresTelemetry) {
-                        telemetryRequiredModalRef.current?.open(result.featureName)
+            {postHog.isFeatureEnabled('tasks') && (
+              <FormField
+                control={previewFeaturesForm.control}
+                name="experimentalFeatureTasks"
+                render={({ field }) => (
+                  <div className="flex-row flex items-center gap-4">
+                    <div className="flex-1">
+                      <label className="text-sm font-medium">Tasks</label>
+                    </div>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={async (value) =>
+                        await handleExperimentalFeaturesToggle('experimentalFeatureTasks', value)
                       }
-                    }}
-                  />
-                </div>
-              )}
-            />
+                    />
+                  </div>
+                )}
+              />
+            )}
           </form>
         </Form>
       </SectionCard>
