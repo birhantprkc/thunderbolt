@@ -1,3 +1,4 @@
+import { type SearchResult } from 'exa-js'
 import { z } from 'zod'
 
 /**
@@ -24,10 +25,12 @@ export const searchRequestSchema = z.object({
   max_results: z.number().default(10),
 })
 
-export const searchResponseSchema = baseApiResponseSchema(z.string())
-
 export type SearchRequest = z.infer<typeof searchRequestSchema>
-export type SearchResponse = z.infer<typeof searchResponseSchema>
+export type SearchResponse = {
+  data: SearchResult<{}>[]
+  success: boolean
+  error?: string | null
+}
 
 /**
  * Fetch content request/response schemas
@@ -36,21 +39,17 @@ export const fetchContentRequestSchema = z.object({
   url: z.string(),
 })
 
-export const fetchContentDataSchema = z.object({
-  url: z.string(),
-  title: z.string().nullable(),
-  text: z.string(),
-  favicon: z.string().nullable(),
-  image: z.string().nullable(),
-  author: z.string().nullable(),
-  published_date: z.string().nullable(),
-})
-
-export const fetchContentResponseSchema = baseApiResponseSchema(fetchContentDataSchema)
-
 export type FetchContentRequest = z.infer<typeof fetchContentRequestSchema>
-export type FetchContentData = z.infer<typeof fetchContentDataSchema>
-export type FetchContentResponse = z.infer<typeof fetchContentResponseSchema>
+
+/**
+ * FetchContentResponse returns the raw SearchResult from Exa's getContents API.
+ * The SearchResult includes properties like url, title, text, favicon, image, author, publishedDate, etc.
+ */
+export type FetchContentResponse = {
+  data: SearchResult<{}> | null
+  success: boolean
+  error?: string | null
+}
 
 /**
  * Weather request/response schemas

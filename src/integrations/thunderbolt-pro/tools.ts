@@ -16,7 +16,7 @@ export const searchSchema = z
 
 export const fetchContentSchema = z
   .object({
-    url: z.string().describe('The webpage URL to fetch content from'),
+    url: z.string().describe('Webpage URL to fetch content from'),
   })
   .strict()
 
@@ -48,7 +48,7 @@ type FetchContentData = {
   image: string | null
   author: string | null
   published_date: string | null
-}
+} | null
 
 /**
  * Search the web and return formatted results
