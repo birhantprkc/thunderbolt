@@ -1,5 +1,4 @@
-import { and, asc, desc, eq, like, notExists, sql } from 'drizzle-orm'
-import { v7 as uuidv7 } from 'uuid'
+import { and, asc, desc, eq, like, sql } from 'drizzle-orm'
 import { DatabaseSingleton } from '../db/singleton'
 import {
   accountsTable,
@@ -272,44 +271,32 @@ export const getAllChatThreads = async () => {
 /**
  * Gets a specific chat thread by ID
  */
-export const getChatThreadById = async (id: string) => {
+export const getChatThread = async (id: string) => {
   const db = DatabaseSingleton.instance.db
   return await db.select().from(chatThreadsTable).where(eq(chatThreadsTable.id, id)).get()
 }
 
 /**
- * Gets an existing empty chat thread or creates a new one
+ * Create a new chat thread
  */
-export const getOrCreateChatThread = async (isEncrypted: boolean = false): Promise<string> => {
+export const createChatThread = async (id: string) => {
   const db = DatabaseSingleton.instance.db
-  // First check if any threads exist
-  const threads = await db.select().from(chatThreadsTable).orderBy(desc(chatThreadsTable.id))
+  await db.insert(chatThreadsTable).values({ id, title: 'New Chat' })
+}
 
-  if (threads.length === 0) {
-    // No threads exist, create a new one
-    const chatThreadId = uuidv7()
-    await db.insert(chatThreadsTable).values({ id: chatThreadId, title: 'New Chat', isEncrypted: isEncrypted ? 1 : 0 })
-    return chatThreadId
+/**
+ * Gets a specific chat thread by ID or create a new one with the provided ID
+ */
+export const getOrCreateChatThread = async (id: string) => {
+  const thread = await getChatThread(id)
+
+  if (thread?.id) {
+    return thread
   }
 
-  // Check for empty threads first
-  const emptyThreads = await db
-    .select({ id: chatThreadsTable.id })
-    .from(chatThreadsTable)
-    .where(
-      notExists(db.select().from(chatMessagesTable).where(eq(chatMessagesTable.chatThreadId, chatThreadsTable.id))),
-    )
-    .limit(1)
+  await createChatThread(id)
 
-  if (emptyThreads.length > 0) {
-    // Use the empty thread
-    return emptyThreads[0].id
-  }
-
-  // No empty threads, create a new one
-  const chatThreadId = uuidv7()
-  await db.insert(chatThreadsTable).values({ id: chatThreadId, title: 'New Chat', isEncrypted: isEncrypted ? 1 : 0 })
-  return chatThreadId
+  return await getChatThread(id)
 }
 
 // ============================================================================
