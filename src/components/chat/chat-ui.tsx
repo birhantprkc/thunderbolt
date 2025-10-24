@@ -15,6 +15,10 @@ import { PromptInput } from '../ui/prompt-input'
 import { AssistantMessage } from './assistant-message'
 import { TriggerMessage } from './trigger-message'
 import { UserMessage } from './user-message'
+import { Lock } from 'lucide-react'
+import TimelineMessage from './timeline-message'
+import { useQuery } from '@tanstack/react-query'
+import { getChatThread } from '@/dal'
 
 interface ChatUIProps {
   chatHelpers: UseChatHelpers<ThunderboltUIMessage>
@@ -22,7 +26,7 @@ interface ChatUIProps {
   selectedModelId?: string
   onModelChange: (model: string | null) => void
   triggerAutomation?: AutomationRun | null
-  chatThreadId?: string
+  chatThreadId: string
 }
 
 interface SuggestionButtonProps {
@@ -88,6 +92,11 @@ export default function ChatUI({
     chatThreadId,
     currentInput: input,
     onOverflow: () => setShowOverflowModal(true),
+  })
+
+  const { data: chatThread = null } = useQuery({
+    queryKey: ['chatThreads', chatThreadId],
+    queryFn: () => getChatThread(chatThreadId),
   })
 
   // Extract prompt from the first message (automation prompt) for trigger display
@@ -170,6 +179,13 @@ export default function ChatUI({
     const textToSend = input.trim()
     if (isStreaming || !textToSend) return
 
+    // Validate encryption state
+    if (chatThread && chatThread.isEncrypted !== selectedModel?.isConfidential) {
+      throw new Error(
+        `This model is not available for ${chatThread.isEncrypted === 1 ? 'encrypted' : 'unencrypted'} conversations.`,
+      )
+    }
+
     if (isOverflowing) {
       setShowOverflowModal(true)
       trackEvent('chat_send_prompt_overflow', {
@@ -189,7 +205,7 @@ export default function ChatUI({
     // Clear the input immediately for responsive UX
     setInput('')
 
-    await chatHelpers.sendMessage({ text: textToSend })
+    await chatHelpers.sendMessage({ text: textToSend, metadata: { modelId: selectedModelId } })
 
     // Reset user scroll state and scroll to bottom when submitting a new message
     resetUserScroll()
@@ -227,6 +243,14 @@ export default function ChatUI({
             exit={{ opacity: 0 }}
             className="flex-1 p-4 overflow-y-auto space-y-4"
           >
+            {chatThread?.isEncrypted === 1 && (
+              <TimelineMessage>
+                <div className="flex flex-row items-center gap-2">
+                  <Lock className="size-4 text-blue-600 dark:text-blue-400" />
+                  <p className="text-blue-700 dark:text-blue-300">This conversation is encrypted</p>
+                </div>
+              </TimelineMessage>
+            )}
             {/* Automation trigger banner */}
             {triggerAutomation?.wasTriggeredByAutomation && (
               <TriggerMessage
@@ -308,6 +332,7 @@ export default function ChatUI({
           >
             <PromptInput
               ref={formRef}
+              chatThread={chatThread}
               value={input}
               onChange={(value: string) => setInput(value)}
               placeholder="Say something..."
