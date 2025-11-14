@@ -47,7 +47,13 @@ export default function OAuthCallback() {
         const oauthState = await getOAuthState()
         const returnContext = oauthState.returnContext
 
-        if (returnContext === 'onboarding') {
+        if (returnContext?.startsWith('/')) {
+          navigate(returnContext, {
+            state: {
+              oauth: { code, state, error: errorDescription || error },
+            },
+          })
+        } else if (returnContext === 'onboarding') {
           navigate('/', {
             state: {
               oauth: { code, state, error: errorDescription || error },
