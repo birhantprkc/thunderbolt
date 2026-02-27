@@ -5,7 +5,7 @@ import TimelineMessage from './timeline-message'
 import { MemoizedMarkdown } from './memoized-markdown'
 import { memo } from 'react'
 
-interface TriggerMessageProps {
+type TriggerMessageProps = {
   chatThreadId: string
   /** The title of the automation that triggered the chat */
   title?: string

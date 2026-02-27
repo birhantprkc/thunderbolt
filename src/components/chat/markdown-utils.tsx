@@ -1,12 +1,37 @@
-import { createContext, Fragment, memo, useContext, type ReactNode } from 'react'
+import { createContext, Fragment, memo, useCallback, useEffect, useMemo, useContext, type ReactNode } from 'react'
 import type { Components } from 'react-markdown'
 
 import { CitationBadge } from '@/components/chat/citation-badge'
+import { ExternalLinkDialog } from '@/components/chat/external-link-dialog'
+import { useSetPreviewHidden, useShowPreview } from '@/content-view/context'
+import { useExternalLinkDialog } from '@/hooks/use-external-link-dialog'
+import { isDesktop } from '@/lib/platform'
 import { isSafeUrl } from '@/lib/url-utils'
 import type { CitationMap } from '@/types/citation'
 
 // Re-export for consumers that import CitationMap from here
 export type { CitationMap }
+
+/**
+ * Context for opening the shared external link confirmation dialog.
+ * SafeLink reads this context and throws an error if not provided.
+ * The ExternalLinkDialogProvider must wrap all markdown content.
+ */
+type ExternalLinkDialogContextValue = {
+  openExternalLink: (url: string) => void
+}
+const ExternalLinkDialogContext = createContext<ExternalLinkDialogContextValue | undefined>(undefined)
+
+/** Use the shared external link dialog. Throws if not inside ExternalLinkDialogProvider. */
+export const useOpenExternalLink = (): ((url: string) => void) => {
+  const context = useContext(ExternalLinkDialogContext)
+  if (!context) {
+    throw new Error(
+      'useOpenExternalLink requires ExternalLinkDialogProvider. Wrap the content with <ExternalLinkDialogProvider>.',
+    )
+  }
+  return context.openExternalLink
+}
 
 /**
  * Context for passing citation data to markdown components without creating
@@ -127,14 +152,76 @@ const processChildren = (children: ReactNode, citations?: CitationMap): ReactNod
 }
 
 /**
+ * Provider that renders a single ExternalLinkDialog for all SafeLinks in the tree.
+ * Wrap markdown content with this to avoid N dialog instances for N links.
+ */
+export const ExternalLinkDialogProvider = memo(({ children }: { children: ReactNode }) => {
+  const { dialogOpen, pendingUrl, openDialog, handleConfirm, dismissWithAction, setDialogOpen, openError, isOpening } =
+    useExternalLinkDialog()
+  const contextValue = useMemo(() => ({ openExternalLink: openDialog }), [openDialog])
+
+  const showPreview = useShowPreview()
+  const setPreviewHidden = useSetPreviewHidden()
+  const desktop = isDesktop() && !!showPreview
+
+  // Hide the native sidebar webview while the dialog is open (Tauri webviews render above DOM)
+  useEffect(() => {
+    setPreviewHidden?.(dialogOpen)
+    return () => setPreviewHidden?.(false)
+  }, [dialogOpen, setPreviewHidden])
+
+  const handleOpenInApp = useCallback(() => {
+    if (showPreview) dismissWithAction(showPreview)
+  }, [dismissWithAction, showPreview])
+
+  return (
+    <ExternalLinkDialogContext.Provider value={contextValue}>
+      {children}
+      <ExternalLinkDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        url={pendingUrl}
+        onConfirm={handleConfirm}
+        onOpenInApp={desktop ? handleOpenInApp : undefined}
+        openError={openError}
+        isOpening={isOpening}
+      />
+    </ExternalLinkDialogContext.Provider>
+  )
+})
+ExternalLinkDialogProvider.displayName = 'ExternalLinkDialogProvider'
+
+/**
  * Custom ReactMarkdown component overrides that handle <br> tags in rendered output.
  * Ensures line breaks work correctly in tables, lists, and paragraphs.
  * All components are memoized to prevent unnecessary re-renders during streaming.
  */
-const SafeLink = memo(({ href, children, ...props }: React.ComponentProps<'a'>) => {
+
+/**
+ * Validates and renders markdown links with external link confirmation.
+ * Always uses ExternalLinkDialogContext provided by ExternalLinkDialogProvider.
+ * Memoized to prevent unnecessary re-renders during streaming.
+ */
+const SafeLink = memo((props: React.ComponentProps<'a'>) => {
+  const { href, children, ...restProps } = props
+  const context = useContext(ExternalLinkDialogContext)
+
+  if (!context) {
+    throw new Error(
+      'SafeLink requires ExternalLinkDialogProvider. Wrap your markdown content with <ExternalLinkDialogProvider>.',
+    )
+  }
+
   const safeHref = href && isSafeUrl(href) ? href : undefined
+
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault()
+    if (!safeHref) return
+    context.openExternalLink(safeHref)
+  }
+
   return (
-    <a {...props} href={safeHref} target="_blank" rel="noopener noreferrer">
+    <a {...restProps} href={safeHref ?? '#'} target="_blank" rel="noopener noreferrer" onClick={handleClick}>
       {children}
     </a>
   )

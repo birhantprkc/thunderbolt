@@ -19,9 +19,12 @@ export type SidebarWebviewConfig = {
 export const useSidebarWebview = (
   config: SidebarWebviewConfig | null,
   containerRef: React.RefObject<HTMLElement | null>,
+  hidden = false,
 ) => {
   const [isInitialized, setIsInitialized] = useState(false)
   const webviewRef = useRef<Webview | null>(null)
+  const hiddenRef = useRef(hidden)
+  hiddenRef.current = hidden
   const resizeObserverRef = useRef<ResizeObserver | undefined>(undefined)
   const animationFrameRef = useRef<number | undefined>(undefined)
   const windowRef = useRef<ReturnType<typeof getCurrentWindow> | null>(null)
@@ -119,6 +122,11 @@ export const useSidebarWebview = (
         webviewRef.current = webview
         setIsInitialized(true)
 
+        // If hidden was set before the webview finished initializing, hide it now
+        if (hiddenRef.current) {
+          webview.hide().catch(console.error)
+        }
+
         // Add unload listener AFTER webview is successfully created
         window.addEventListener('unload', handleUnload)
         unloadListenerRegisteredRef.current = true
@@ -181,6 +189,18 @@ export const useSidebarWebview = (
       cleanupWebview()
     }
   }, [config?.url]) // Re-initialize if URL changes
+
+  // Hide/show the native webview when overlaid by DOM elements (e.g. dialogs)
+  useEffect(() => {
+    const webview = webviewRef.current
+    if (!webview) return
+
+    if (hidden) {
+      webview.hide().catch(console.error)
+    } else {
+      webview.show().catch(console.error)
+    }
+  }, [hidden])
 
   const closeWebview = async () => {
     if (webviewRef.current) {

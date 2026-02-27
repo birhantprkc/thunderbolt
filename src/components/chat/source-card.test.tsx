@@ -1,8 +1,12 @@
 import '@/testing-library'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it, mock } from 'bun:test'
 import type { CitationSource } from '@/types/citation'
+import { ExternalLinkDialogProvider } from './markdown-utils'
 import { SourceCard } from './source-card'
+
+const renderWithProvider = (ui: React.ReactElement) =>
+  render(ui, { wrapper: ({ children }) => <ExternalLinkDialogProvider>{children}</ExternalLinkDialogProvider> })
 
 describe('SourceCard', () => {
   const mockSource: CitationSource = {
@@ -15,7 +19,7 @@ describe('SourceCard', () => {
 
   describe('rendering', () => {
     it('should display title and site name', () => {
-      render(<SourceCard source={mockSource} />)
+      renderWithProvider(<SourceCard source={mockSource} />)
 
       expect(screen.getByText('Example Article Title')).toBeInTheDocument()
       expect(screen.getByText('Example Site')).toBeInTheDocument()
@@ -27,14 +31,14 @@ describe('SourceCard', () => {
 
     it('should show URL as title when title is missing', () => {
       const sourceWithoutTitle = { ...mockSource, title: '' }
-      render(<SourceCard source={sourceWithoutTitle} />)
+      renderWithProvider(<SourceCard source={sourceWithoutTitle} />)
 
       expect(screen.getByText('https://example.com/article')).toBeInTheDocument()
     })
 
     it('should derive favicon from URL when favicon prop is missing', () => {
       const sourceWithoutFavicon = { ...mockSource, favicon: undefined }
-      render(<SourceCard source={sourceWithoutFavicon} />)
+      renderWithProvider(<SourceCard source={sourceWithoutFavicon} />)
 
       const container = screen.getByRole('listitem')
 
@@ -46,7 +50,7 @@ describe('SourceCard', () => {
 
     it('should use proxied favicon URL when proxyBase is provided', () => {
       const sourceWithoutFavicon = { ...mockSource, favicon: undefined }
-      render(<SourceCard source={sourceWithoutFavicon} proxyBase="http://localhost:8000/v1" />)
+      renderWithProvider(<SourceCard source={sourceWithoutFavicon} proxyBase="http://localhost:8000/v1" />)
 
       const container = screen.getByRole('listitem')
       const img = container.querySelector('img')
@@ -58,7 +62,7 @@ describe('SourceCard', () => {
     })
 
     it('should show initial badge when favicon fails to load', () => {
-      render(<SourceCard source={mockSource} />)
+      renderWithProvider(<SourceCard source={mockSource} />)
 
       const container = screen.getByRole('listitem')
       const img = container.querySelector('img')
@@ -75,40 +79,80 @@ describe('SourceCard', () => {
 
     it('should display "Unknown" when site name is missing', () => {
       const sourceWithoutSiteName = { ...mockSource, siteName: undefined }
-      render(<SourceCard source={sourceWithoutSiteName} />)
+      renderWithProvider(<SourceCard source={sourceWithoutSiteName} />)
 
       expect(screen.getByText('Unknown')).toBeInTheDocument()
     })
   })
 
   describe('link behavior', () => {
-    it('should open URL in new tab with security attributes', () => {
-      render(<SourceCard source={mockSource} />)
+    it('should use actual URL as href and show warning dialog on click', () => {
+      renderWithProvider(<SourceCard source={mockSource} />)
 
       const link = screen.getByRole('listitem')
       expect(link).toHaveAttribute('href', 'https://example.com/article')
-      expect(link).toHaveAttribute('target', '_blank')
-      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+      expect(link.tagName).toBe('A')
     })
 
-    it('should be a clickable link', () => {
-      render(<SourceCard source={mockSource} />)
+    it('should show external link dialog when clicked', () => {
+      renderWithProvider(<SourceCard source={mockSource} />)
 
       const link = screen.getByRole('listitem')
-      expect(link.tagName).toBe('A')
+      fireEvent.click(link)
+
+      // Dialog should appear with the URL
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+      expect(screen.getByText('Open external link')).toBeInTheDocument()
+      expect(screen.getByText('https://example.com/article')).toBeInTheDocument()
+    })
+
+    it('should open URL in new window when dialog is confirmed', () => {
+      const originalOpen = window.open
+      const mockWindowOpen = mock(() => ({}) as Window)
+      window.open = mockWindowOpen as typeof window.open
+
+      renderWithProvider(<SourceCard source={mockSource} />)
+
+      const link = screen.getByRole('listitem')
+      fireEvent.click(link)
+
+      const openButton = screen.getByRole('button', { name: 'Open link' })
+      fireEvent.click(openButton)
+
+      expect(mockWindowOpen).toHaveBeenCalledWith('https://example.com/article', '_blank', 'noopener,noreferrer')
+
+      window.open = originalOpen
+    })
+
+    it('should not open URL when dialog is cancelled', () => {
+      const originalOpen = window.open
+      const mockWindowOpen = mock(() => null)
+      window.open = mockWindowOpen as typeof window.open
+
+      renderWithProvider(<SourceCard source={mockSource} />)
+
+      const link = screen.getByRole('listitem')
+      fireEvent.click(link)
+
+      const closeButton = screen.getByRole('button', { name: 'Close' })
+      fireEvent.click(closeButton)
+
+      expect(mockWindowOpen).not.toHaveBeenCalled()
+
+      window.open = originalOpen
     })
   })
 
   describe('accessibility', () => {
     it('should have listitem role for screen readers', () => {
-      render(<SourceCard source={mockSource} />)
+      renderWithProvider(<SourceCard source={mockSource} />)
 
       const link = screen.getByRole('listitem')
       expect(link).toBeInTheDocument()
     })
 
     it('should have empty alt text on favicon', () => {
-      render(<SourceCard source={mockSource} />)
+      renderWithProvider(<SourceCard source={mockSource} />)
 
       const link = screen.getByRole('listitem')
       const img = link.querySelector('img')
@@ -117,7 +161,7 @@ describe('SourceCard', () => {
 
     it('should show initial badge with aria-hidden when derived favicon fails', () => {
       const sourceWithoutFavicon = { ...mockSource, favicon: undefined }
-      render(<SourceCard source={sourceWithoutFavicon} />)
+      renderWithProvider(<SourceCard source={sourceWithoutFavicon} />)
 
       const link = screen.getByRole('listitem')
       const img = link.querySelector('img')
@@ -133,14 +177,14 @@ describe('SourceCard', () => {
 
   describe('styling', () => {
     it('should apply custom className', () => {
-      render(<SourceCard source={mockSource} className="custom-class" />)
+      renderWithProvider(<SourceCard source={mockSource} className="custom-class" />)
 
       const link = screen.getByRole('listitem')
       expect(link).toHaveClass('custom-class')
     })
 
     it('should have proper link styling', () => {
-      render(<SourceCard source={mockSource} />)
+      renderWithProvider(<SourceCard source={mockSource} />)
 
       const link = screen.getByRole('listitem')
       expect(link).toHaveClass('flex')
@@ -150,7 +194,7 @@ describe('SourceCard', () => {
 
     it('should display colored badge when derived favicon fails to load', () => {
       const sourceWithoutFavicon = { ...mockSource, favicon: undefined, siteName: 'Apple' }
-      const { container } = render(<SourceCard source={sourceWithoutFavicon} />)
+      const { container } = renderWithProvider(<SourceCard source={sourceWithoutFavicon} />)
 
       // Trigger favicon error to fall back to letter badge
       const img = container.querySelector('img')

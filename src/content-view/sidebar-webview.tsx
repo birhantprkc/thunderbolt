@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { isTauri } from '@/lib/platform'
+import { isSafeUrl } from '@/lib/url-utils'
 import { trackEvent } from '@/lib/posthog'
 import { Check, Copy, ExternalLink } from 'lucide-react'
 import { useRef, useState } from 'react'
@@ -9,6 +10,7 @@ import { useSidebarWebview, type SidebarWebviewConfig } from './use-sidebar-webv
 type SidebarWebviewProps = {
   config: SidebarWebviewConfig | null
   onClose?: () => void
+  hidden?: boolean
 }
 
 /**
@@ -17,9 +19,9 @@ type SidebarWebviewProps = {
  * The webview will automatically track the container's size and position,
  * updating when the sidebar is resized or moved.
  */
-export const SidebarWebview = ({ config, onClose }: SidebarWebviewProps) => {
+export const SidebarWebview = ({ config, onClose, hidden }: SidebarWebviewProps) => {
   const panelRef = useRef<HTMLDivElement>(null)
-  const { isInitialized, closeWebview } = useSidebarWebview(config, panelRef)
+  const { isInitialized, closeWebview } = useSidebarWebview(config, panelRef, hidden)
   const [isCopied, setIsCopied] = useState(false)
 
   const handleClose = async () => {
@@ -45,13 +47,13 @@ export const SidebarWebview = ({ config, onClose }: SidebarWebviewProps) => {
   }
 
   const handleOpenExternal = async () => {
-    if (!config?.url) return
+    if (!config?.url || !isSafeUrl(config.url)) return
     try {
       trackEvent('preview_open_external')
       const { openUrl } = await import('@tauri-apps/plugin-opener')
       await openUrl(config.url)
     } catch (error) {
-      console.error('Error opening URL externally:', error)
+      console.error('Error opening external URL:', error)
     }
   }
 
@@ -72,7 +74,6 @@ export const SidebarWebview = ({ config, onClose }: SidebarWebviewProps) => {
 
   return (
     <div ref={panelRef} className="flex flex-col h-full w-full">
-      {/* Header matching main app header - 48px tall */}
       <ContentViewHeader
         title={config.url}
         onClose={handleClose}
@@ -103,7 +104,6 @@ export const SidebarWebview = ({ config, onClose }: SidebarWebviewProps) => {
 
       {/* Spacer for webview - this will be covered by the webview */}
       <div className="flex-1 w-full bg-background relative">
-        {/* Loading state */}
         {!isInitialized && (
           <div className="absolute inset-0 flex items-center justify-center">
             <p className="text-muted-foreground text-sm">Loading preview...</p>

@@ -7,12 +7,25 @@ import {
   hydrateStore,
   resetStore,
 } from '@/test-utils/chat-store-mocks'
+import { ContentViewProvider } from '@/content-view/context'
 import { createQueryTestWrapper } from '@/test-utils/react-query'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
 import { useChatStore } from '@/chats/chat-store'
 import { ChatMessages } from './chat-messages'
+import { ExternalLinkDialogProvider } from './markdown-utils'
 import type { ThunderboltUIMessage } from '@/types'
+
+const createTestWrapper = () => {
+  const QueryWrapper = createQueryTestWrapper()
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryWrapper>
+      <ContentViewProvider>
+        <ExternalLinkDialogProvider>{children}</ExternalLinkDialogProvider>
+      </ContentViewProvider>
+    </QueryWrapper>
+  )
+}
 
 const createTestMessage = (overrides?: Partial<ThunderboltUIMessage>): ThunderboltUIMessage => ({
   id: 'msg-1',
@@ -63,7 +76,7 @@ describe('ChatMessages', () => {
       })
 
       const { container } = render(<ChatMessages useChat={mockUseChat} />, {
-        wrapper: createQueryTestWrapper(),
+        wrapper: createTestWrapper(),
       })
 
       // Messages should be rendered - check if text content is present
@@ -88,7 +101,7 @@ describe('ChatMessages', () => {
       })
 
       const { container } = render(<ChatMessages useChat={mockUseChat} />, {
-        wrapper: createQueryTestWrapper(),
+        wrapper: createTestWrapper(),
       })
 
       // EncryptionMessage should be rendered with the confidential text
@@ -129,7 +142,7 @@ describe('ChatMessages', () => {
       })
 
       const { container } = render(<ChatMessages useChat={mockUseChat} />, {
-        wrapper: createQueryTestWrapper(),
+        wrapper: createTestWrapper(),
       })
 
       // TriggerMessage should be rendered with "Triggered by automation" text
@@ -162,7 +175,7 @@ describe('ChatMessages', () => {
         }),
       })
 
-      render(<ChatMessages useChat={mockUseChat} />, { wrapper: createQueryTestWrapper() })
+      render(<ChatMessages useChat={mockUseChat} />, { wrapper: createTestWrapper() })
 
       // First user message should be skipped, only assistant message should be visible
       expect(screen.queryByText('Automation prompt')).not.toBeInTheDocument()
@@ -201,7 +214,7 @@ describe('ChatMessages', () => {
       })
 
       const { container } = render(<ChatMessages useChat={mockUseChat} />, {
-        wrapper: createQueryTestWrapper(),
+        wrapper: createTestWrapper(),
       })
 
       // OAuth retry message should be skipped
@@ -231,7 +244,7 @@ describe('ChatMessages', () => {
       // Simulate an active retry in progress
       useChatStore.getState().updateSession('thread-1', { retryCount: 1 })
 
-      render(<ChatMessages useChat={mockUseChat} />, { wrapper: createQueryTestWrapper() })
+      render(<ChatMessages useChat={mockUseChat} />, { wrapper: createTestWrapper() })
 
       expect(screen.getByText('Something went wrong. Retrying (1/3)...')).toBeInTheDocument()
       expect(screen.queryByText('Retry')).not.toBeInTheDocument()
@@ -253,7 +266,7 @@ describe('ChatMessages', () => {
       })
 
       // retryCount defaults to 0 — no active retry (e.g. stale error after page refresh)
-      render(<ChatMessages useChat={mockUseChat} />, { wrapper: createQueryTestWrapper() })
+      render(<ChatMessages useChat={mockUseChat} />, { wrapper: createTestWrapper() })
 
       expect(screen.getByText('Something went wrong. Please try again.')).toBeInTheDocument()
       expect(screen.getByText('Retry')).toBeInTheDocument()
@@ -276,7 +289,7 @@ describe('ChatMessages', () => {
 
       useChatStore.getState().updateSession('thread-1', { retriesExhausted: true })
 
-      render(<ChatMessages useChat={mockUseChat} />, { wrapper: createQueryTestWrapper() })
+      render(<ChatMessages useChat={mockUseChat} />, { wrapper: createTestWrapper() })
 
       expect(screen.getByText('Something went wrong. Please try again.')).toBeInTheDocument()
       expect(screen.getByText('Retry')).toBeInTheDocument()
@@ -304,7 +317,7 @@ describe('ChatMessages', () => {
 
       useChatStore.getState().updateSession('thread-1', { retriesExhausted: true })
 
-      render(<ChatMessages useChat={mockUseChat} />, { wrapper: createQueryTestWrapper() })
+      render(<ChatMessages useChat={mockUseChat} />, { wrapper: createTestWrapper() })
 
       expect(screen.getByText('Something went wrong. Please try again.')).toBeInTheDocument()
     })
@@ -329,7 +342,7 @@ describe('ChatMessages', () => {
         triggerData: null,
       })
 
-      render(<ChatMessages useChat={mockUseChat} />, { wrapper: createQueryTestWrapper() })
+      render(<ChatMessages useChat={mockUseChat} />, { wrapper: createTestWrapper() })
 
       // ErrorMessage should not be rendered when streaming
       expect(screen.queryByText('Something went wrong. Please try again.')).not.toBeInTheDocument()
@@ -355,7 +368,7 @@ describe('ChatMessages', () => {
         triggerData: null,
       })
 
-      render(<ChatMessages useChat={mockUseChat} />, { wrapper: createQueryTestWrapper() })
+      render(<ChatMessages useChat={mockUseChat} />, { wrapper: createTestWrapper() })
 
       // ErrorMessage should not be rendered when message has parts
       expect(screen.queryByText('Something went wrong. Please try again.')).not.toBeInTheDocument()
@@ -383,7 +396,7 @@ describe('ChatMessages', () => {
         triggerData: null,
       })
 
-      render(<ChatMessages useChat={mockUseChat} />, { wrapper: createQueryTestWrapper() })
+      render(<ChatMessages useChat={mockUseChat} />, { wrapper: createTestWrapper() })
 
       // Message should be rendered (isStreaming prop is passed to AssistantMessage)
       expect(screen.getByText('Streaming response')).toBeInTheDocument()
@@ -415,7 +428,7 @@ describe('ChatMessages', () => {
         triggerData: null,
       })
 
-      render(<ChatMessages useChat={mockUseChat} />, { wrapper: createQueryTestWrapper() })
+      render(<ChatMessages useChat={mockUseChat} />, { wrapper: createTestWrapper() })
 
       // Both messages should be rendered
       expect(screen.getByText('First response')).toBeInTheDocument()
@@ -442,7 +455,7 @@ describe('ChatMessages', () => {
       })
 
       const { container } = render(<ChatMessages useChat={mockUseChat} />, {
-        wrapper: createQueryTestWrapper(),
+        wrapper: createTestWrapper(),
       })
 
       // Component should render without errors

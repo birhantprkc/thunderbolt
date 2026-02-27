@@ -1,12 +1,18 @@
-import { render } from '@testing-library/react'
-import { describe, expect, test } from 'bun:test'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, mock, test } from 'bun:test'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
+import { ContentViewProvider } from '@/content-view/context'
 import { createTestProvider } from '@/test-utils/test-provider'
 import type { CitationMap, CitationSource } from '@/types/citation'
 import { CitationPopoverProvider } from './citation-popover'
-import { CitationContext, citationMarkdownComponents, markdownComponents } from './markdown-utils'
+import {
+  CitationContext,
+  citationMarkdownComponents,
+  ExternalLinkDialogProvider,
+  markdownComponents,
+} from './markdown-utils'
 
 const makeSources = (name: string): CitationSource[] => [
   { id: `src-${name}`, title: `${name} Article`, url: `https://${name}.com`, siteName: name, isPrimary: true },
@@ -191,6 +197,60 @@ describe('markdownComponents', () => {
   })
 })
 
+describe('ExternalLinkDialogProvider (single dialog for multiple links)', () => {
+  test('renders only one dialog instance; clicking a link shows that URL in the shared dialog', () => {
+    const markdown = '[first](https://a.com) [second](https://b.com) [third](https://c.com)'
+    const { container, getByRole, getByText } = render(
+      <ContentViewProvider>
+        <ExternalLinkDialogProvider>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+            {markdown}
+          </ReactMarkdown>
+        </ExternalLinkDialogProvider>
+      </ContentViewProvider>,
+    )
+
+    const links = container.querySelectorAll('a[href]')
+    expect(links).toHaveLength(3)
+
+    fireEvent.click(links[0]!)
+
+    const dialog = getByRole('alertdialog')
+    expect(dialog).toBeInTheDocument()
+    expect(getByText('https://a.com')).toBeInTheDocument()
+
+    const dialogs = document.body.querySelectorAll('[role="alertdialog"]')
+    expect(dialogs).toHaveLength(1)
+  })
+
+  test('works without ContentViewProvider: no Open in Sidebar, Open link does not crash', () => {
+    const markdown = '[link](https://example.com)'
+    const { container } = render(
+      <ExternalLinkDialogProvider>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          {markdown}
+        </ReactMarkdown>
+      </ExternalLinkDialogProvider>,
+    )
+
+    const link = container.querySelector('a[href]')
+    if (!link) throw new Error('expected link')
+    fireEvent.click(link)
+
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(screen.getByText('https://example.com')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Open in Sidebar' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open link' })).toBeInTheDocument()
+
+    const originalOpen = window.open
+    const mockWindowOpen = mock(() => ({}) as Window)
+    window.open = mockWindowOpen as typeof window.open
+    fireEvent.click(screen.getByRole('button', { name: 'Open link' }))
+    expect(mockWindowOpen).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer')
+    window.open = originalOpen
+  })
+})
+
 describe('citationMarkdownComponents (citation placeholders via context)', () => {
   const renderWithCitations = (content: string, citations: CitationMap) => {
     const TestProvider = createTestProvider()
@@ -203,7 +263,11 @@ describe('citationMarkdownComponents (citation placeholders via context)', () =>
       {
         wrapper: ({ children }) => (
           <TestProvider>
-            <CitationPopoverProvider>{children}</CitationPopoverProvider>
+            <ContentViewProvider>
+              <ExternalLinkDialogProvider>
+                <CitationPopoverProvider>{children}</CitationPopoverProvider>
+              </ExternalLinkDialogProvider>
+            </ContentViewProvider>
           </TestProvider>
         ),
       },

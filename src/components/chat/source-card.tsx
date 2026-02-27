@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { CitationSource } from '@/types/citation'
+import { useOpenExternalLink } from '@/components/chat/markdown-utils'
 import { deriveFaviconUrl, isSafeUrl } from '@/lib/url-utils'
 import { cn } from '@/lib/utils'
 
@@ -26,6 +27,7 @@ const getBadgeColor = (siteName: string = '') => {
  */
 export const SourceCard = ({ source, className, proxyBase }: SourceCardProps) => {
   const [faviconError, setFaviconError] = useState(false)
+  const openExternalLink = useOpenExternalLink()
 
   const displayTitle = source.title || source.url
   const displaySiteName = source.siteName || 'Unknown'
@@ -36,11 +38,18 @@ export const SourceCard = ({ source, className, proxyBase }: SourceCardProps) =>
   const initial = displaySiteName.charAt(0).toUpperCase()
   const badgeColor = getBadgeColor(displaySiteName)
 
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault()
+    if (safeUrl === '#') return
+    openExternalLink(safeUrl)
+  }
+
   return (
     <a
       href={safeUrl}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={handleClick}
       className={cn('flex flex-col gap-2.5 px-4 py-3 hover:bg-accent/50 transition-colors cursor-pointer', className)}
       role="listitem"
     >
