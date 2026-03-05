@@ -1,4 +1,4 @@
-.PHONY: help setup setup-symlinks install build build-desktop build-android build-ios clean run dev doctor doctor-q docker-up docker-down docker-status thunderbot-pull thunderbot-push
+.PHONY: help setup setup-symlinks install build build-desktop build-android build-ios clean run dev doctor doctor-q docker-up docker-down docker-status thunderbot-pull thunderbot-push thunderbot-customize
 
 # Color definitions
 BLUE := \033[0;34m
@@ -25,8 +25,9 @@ help:
 	@echo "  make docker-down    - Stop docker containers"
 	@echo "  make docker-status  - Show docker container status"
 	@echo "  make thunderbot-pull - Pull latest skills from thunderbot"
-	@echo "  make thunderbot-push - Push skill changes back to thunderbot"
-	@echo "  make setup-symlinks - Create agent symlinks for Claude Code"
+	@echo "  make thunderbot-push      - Push skill changes back to thunderbot"
+	@echo "  make thunderbot-customize - Fork a thunderbot command for local edits (FILE=name.md)"
+	@echo "  make setup-symlinks       - Create agent symlinks for Claude Code"
 
 # Create agent symlinks for Claude Code
 setup-symlinks:
@@ -175,3 +176,9 @@ thunderbot-push:
 	@echo "$(BLUE)→ Pushing skill changes to thunderbot...$(NC)"
 	git subtree push --prefix=.thunderbot thunderbot main
 	@echo "$(GREEN)✓ Skills pushed!$(NC)"
+
+thunderbot-customize:
+	@if [ -z "$(FILE)" ]; then echo "Usage: make thunderbot-customize FILE=thunderfix.md"; exit 1; fi
+	@if [ ! -L ".claude/commands/$(FILE)" ]; then echo "$(YELLOW).claude/commands/$(FILE) is not a symlink — already customized or doesn't exist$(NC)"; exit 1; fi
+	@rm ".claude/commands/$(FILE)" && cp ".thunderbot/$(FILE)" ".claude/commands/$(FILE)"
+	@echo "$(GREEN)✓ .claude/commands/$(FILE) is now a local copy — edit freely$(NC)"

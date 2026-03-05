@@ -2,19 +2,36 @@
 
 Reusable [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills for development workflows. Use them as-is or customize them for your project.
 
-## Quick Start
-
-Run the setup script from your project root:
+## Install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/thunderbird/thunderbot/main/setup.sh | bash
 ```
 
-This adds thunderbot as a git subtree at `.thunderbot/`, creates symlinks into `.claude/commands/` and `.claude/agents/`, and adds a `thunderbot` git remote.
+Run this from your project root. It adds thunderbot as a git subtree, creates symlinks into `.claude/commands/`, and commits the result.
+
+## Skills
+
+| Skill | Description |
+|-------|-------------|
+| `thunderbot` | Autonomous coding agent for Linear tasks |
+| `thunderbot-daemon` | Background daemon that polls Linear for tasks |
+| `thundercheck` | Run type-checking, linting, and format-checking |
+| `thunderclean` | Remove build artifacts |
+| `thunderdoctor` | Verify dev tools and environment |
+| `thunderdown` | Stop docker containers |
+| `thunderfeedback` | Submit feedback as GitHub issues |
+| `thunderfix` | Fix PR issues and monitor until clean |
+| `thunderimprove` | Review changed code for quality |
+| `thunderin` | Enter a work context (worktree, deps, bootstrap) |
+| `thunderout` | Leave worktree and return to main |
+| `thunderpush` | Stage, commit, and push changes |
+| `thundersync` | Sync skills with upstream thunderbot |
+| `thunderup` | Bootstrap the dev environment |
 
 ### Manual Install
 
-If you prefer to do it yourself:
+If you'd rather do it yourself:
 
 ```bash
 # Add the remote
@@ -75,25 +92,6 @@ To go back to the upstream version, re-create the symlink:
 ```bash
 ln -sf ../../.thunderbot/thunderfix.md .claude/commands/thunderfix.md
 ```
-
-## Skills
-
-| Skill | Description |
-|-------|-------------|
-| `thunderbot` | Autonomous coding agent for Linear tasks |
-| `thunderbot-daemon` | Background daemon that polls Linear for tasks |
-| `thundercheck` | Run type-checking, linting, and format-checking |
-| `thunderclean` | Remove build artifacts |
-| `thunderdoctor` | Verify dev tools and environment |
-| `thunderdown` | Stop docker containers |
-| `thunderfeedback` | Submit feedback as GitHub issues |
-| `thunderfix` | Fix PR issues and monitor until clean |
-| `thunderimprove` | Review changed code for quality |
-| `thunderin` | Enter a work context (worktree, deps, bootstrap) |
-| `thunderout` | Leave worktree and return to main |
-| `thunderpush` | Stage, commit, and push changes |
-| `thundersync` | Sync skills with upstream thunderbot |
-| `thunderup` | Bootstrap the dev environment |
 
 ## FAQ
 
