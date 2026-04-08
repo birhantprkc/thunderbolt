@@ -1,8 +1,7 @@
-import { Skeleton } from '@/components/ui/skeleton'
 import { useHttpClient } from '@/contexts'
 import { useMessageCache } from '@/hooks/use-message-cache'
 import { getWeatherForecast } from '@/integrations/thunderbolt-pro/api'
-import { WeatherForecast } from './display'
+import { WeatherForecast, WeatherForecastSkeleton } from './display'
 import type { WeatherForecastData } from './lib'
 
 type WeatherForecastWidgetProps = {
@@ -14,7 +13,7 @@ type WeatherForecastWidgetProps = {
 
 /**
  * Wrapper component that fetches weather data and renders the WeatherForecast component
- * Always fetches 7 days of weather data
+ * Fetches 6 days of weather data (today + 5 forecast days)
  */
 export const WeatherForecastWidget = ({ location, region, country, messageId }: WeatherForecastWidgetProps) => {
   const httpClient = useHttpClient()
@@ -22,7 +21,7 @@ export const WeatherForecastWidget = ({ location, region, country, messageId }: 
     messageId,
     cacheKey: ['weatherForecast', location, region, country],
     fetchFn: async () => {
-      return getWeatherForecast({ location, region, country, days: 7 }, httpClient)
+      return getWeatherForecast({ location, region, country, days: 6 }, httpClient)
     },
   })
 
@@ -37,11 +36,7 @@ export const WeatherForecastWidget = ({ location, region, country, messageId }: 
   }
 
   if (isLoading) {
-    return (
-      <div className="w-full space-y-4 my-4">
-        <Skeleton className="h-48 w-full rounded-lg" />
-      </div>
-    )
+    return <WeatherForecastSkeleton />
   }
 
   if (!data) {
