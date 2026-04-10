@@ -23,6 +23,7 @@ mock.module('@/waitlist/utils', () => ({
 // Now import the rest
 import { user, verification } from '@/db/auth-schema'
 import { waitlist } from '@/db/schema'
+import { challengeTokenHeader } from '@/auth/otp-constants'
 import { createAuth } from '@/auth/auth'
 import { normalizeEmail } from '@/lib/email'
 import { createTestDb } from '@/test-utils/db'
@@ -308,7 +309,7 @@ describe('Auth Waitlist Integration', () => {
         try {
           await auth.api.signInEmailOTP({
             body: { email, otp: '00000000' },
-            headers: new Headers({ 'x-challenge-token': challengeToken }),
+            headers: new Headers({ [challengeTokenHeader]: challengeToken }),
           })
         } catch {
           // Expected: INVALID_OTP
@@ -325,7 +326,7 @@ describe('Auth Waitlist Integration', () => {
       try {
         await auth.api.signInEmailOTP({
           body: { email, otp: '00000000' },
-          headers: new Headers({ 'x-challenge-token': challengeToken }),
+          headers: new Headers({ [challengeTokenHeader]: challengeToken }),
         })
       } catch {
         // Expected: INVALID_OTP
@@ -338,7 +339,7 @@ describe('Auth Waitlist Integration', () => {
       try {
         await auth.api.signInEmailOTP({
           body: { email, otp: correctOtp },
-          headers: new Headers({ 'x-challenge-token': challengeToken }),
+          headers: new Headers({ [challengeTokenHeader]: challengeToken }),
         })
         signInSucceeded = true
       } catch {
@@ -370,7 +371,7 @@ describe('Auth Waitlist Integration', () => {
         try {
           await auth.api.signInEmailOTP({
             body: { email, otp: '00000000' },
-            headers: new Headers({ 'x-challenge-token': challengeToken }),
+            headers: new Headers({ [challengeTokenHeader]: challengeToken }),
           })
         } catch {
           // Expected: INVALID_OTP or TOO_MANY_ATTEMPTS on 3rd
@@ -381,7 +382,7 @@ describe('Auth Waitlist Integration', () => {
       try {
         await auth.api.signInEmailOTP({
           body: { email, otp: '99999999' },
-          headers: new Headers({ 'x-challenge-token': challengeToken }),
+          headers: new Headers({ [challengeTokenHeader]: challengeToken }),
         })
         expect(true).toBe(false)
       } catch (err: unknown) {
@@ -421,7 +422,7 @@ describe('Auth Waitlist Integration', () => {
         try {
           await auth.api.signInEmailOTP({
             body: { email, otp: '00000000' },
-            headers: new Headers({ 'x-challenge-token': challengeToken }),
+            headers: new Headers({ [challengeTokenHeader]: challengeToken }),
           })
         } catch {
           // Expected
@@ -445,7 +446,7 @@ describe('Auth Waitlist Integration', () => {
       try {
         await auth.api.signInEmailOTP({
           body: { email, otp: freshOtp },
-          headers: new Headers({ 'x-challenge-token': freshChallengeToken }),
+          headers: new Headers({ [challengeTokenHeader]: freshChallengeToken }),
         })
         signInSucceeded = true
       } catch {

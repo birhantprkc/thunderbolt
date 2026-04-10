@@ -24,6 +24,7 @@ mock.module('@/waitlist/utils', () => ({
 import { user, verification } from '@/db/auth-schema'
 import { otpChallenge } from '@/db/schema'
 import { waitlist } from '@/db/schema'
+import { challengeTokenHeader } from '@/auth/otp-constants'
 import { createAuth } from '@/auth/auth'
 import { createApp } from '@/index'
 import { createTestDb } from '@/test-utils/db'
@@ -80,7 +81,7 @@ describe('OTP Security Hardening', () => {
   const signInWithChallenge = (email: string, otp: string, challengeToken: string) =>
     auth.api.signInEmailOTP({
       body: { email, otp },
-      headers: new Headers({ 'x-challenge-token': challengeToken }),
+      headers: new Headers({ [challengeTokenHeader]: challengeToken }),
     })
 
   beforeEach(async () => {
@@ -352,7 +353,7 @@ describe('OTP Security Hardening', () => {
       try {
         await auth.api.signInEmailOTP({
           body: { email, otp },
-          headers: new Headers({ 'x-challenge-token': 'wrong-token-value' }),
+          headers: new Headers({ [challengeTokenHeader]: 'wrong-token-value' }),
         })
       } catch {
         threw = true

@@ -1,4 +1,5 @@
 import type { AuthClient } from '@/contexts'
+import { challengeTokenHeader, otpLength } from '@/lib/constants'
 import { HttpError, type HttpClient } from '@/lib/http'
 import { getOtpErrorMessage } from '@/lib/otp-error-messages'
 import { updateSettings } from '@/dal'
@@ -16,8 +17,8 @@ const getServerErrorMessage = async (error: unknown, fallback: string): Promise<
     if (typeof body?.message === 'string' && body.message) {
       return body.message
     }
-  } catch {
-    // Response body not JSON-parseable
+  } catch (e) {
+    console.info('Could not parse error response body as JSON:', e)
   }
   return fallback
 }
@@ -179,7 +180,7 @@ export const useSignInFormState = ({
   }
 
   const handleOtpComplete = async (value: string) => {
-    if (value.length !== 8) {
+    if (value.length !== otpLength) {
       return
     }
 
@@ -190,7 +191,7 @@ export const useSignInFormState = ({
         email: state.email.trim(),
         otp: value,
         fetchOptions: {
-          headers: { 'x-challenge-token': state.challengeToken },
+          headers: { [challengeTokenHeader]: state.challengeToken },
         },
       })
 
