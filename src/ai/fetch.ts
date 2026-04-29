@@ -15,7 +15,7 @@ import {
 import { getModel, getModelProfile, getSettings } from '@/dal'
 import { getDb } from '@/db/database'
 import { getAuthToken } from '@/lib/auth-token'
-import { fetch } from '@/lib/fetch'
+import { fetch, nativeFetch } from '@/lib/fetch'
 import { createToolset, getAvailableTools } from '@/lib/tools'
 import type { Model, SaveMessagesFunction, ThunderboltUIMessage } from '@/types'
 import type { SourceMetadata } from '@/types/source'
@@ -81,12 +81,17 @@ export const createModel = async (modelConfig: Model) => {
     case 'anthropic': {
       const anthropic = createAnthropic({
         apiKey: modelConfig.apiKey || '',
-        fetch,
+        fetch: nativeFetch,
         headers: {
-          // When a user adds their own Anthropic API key, calls go directly from the
-          // browser to Anthropic's API (not through our backend). Anthropic blocks
-          // browser-origin requests by default to prevent accidental key exposure.
-          // This header opts in, acknowledging the risk.
+          // tauri-plugin-http auto-adds an Origin header on every native request, which
+          // makes Anthropic classify the call as "CORS" and apply org-level CORS rules
+          // (some orgs disallow CORS entirely via retention settings). With the plugin's
+          // `unsafe-headers` feature, an empty Origin tells the plugin to strip it, so
+          // Anthropic treats the request as server-to-server. Browsers silently ignore
+          // JS-set Origin, so this is a no-op in the web build.
+          Origin: '',
+          // Browser direct-access opt-in for the web build. No-op in Tauri (the request
+          // is no longer browser-origin once Origin is stripped above).
           'anthropic-dangerous-direct-browser-access': 'true',
         },
       })
@@ -98,7 +103,7 @@ export const createModel = async (modelConfig: Model) => {
       }
       const openai = createOpenAI({
         apiKey: modelConfig.apiKey,
-        fetch,
+        fetch: nativeFetch,
       })
       return openai(modelConfig.model)
     }
@@ -106,6 +111,8 @@ export const createModel = async (modelConfig: Model) => {
       if (!modelConfig.url) {
         throw new Error('No URL provided for custom provider')
       }
+      // Custom URLs stay on the toggle-aware fetch — user-supplied hosts aren't in the
+      // tauri-plugin-http allowlist, so routing through the native plugin would deny them.
       const openaiCompatible = createOpenAICompatible({
         name: 'custom',
         baseURL: modelConfig.url,
@@ -124,7 +131,7 @@ export const createModel = async (modelConfig: Model) => {
         name: 'openrouter',
         baseURL: 'https://openrouter.ai/api/v1',
         apiKey: modelConfig.apiKey,
-        fetch,
+        fetch: nativeFetch,
       })
       return openrouter(modelConfig.model)
     }
