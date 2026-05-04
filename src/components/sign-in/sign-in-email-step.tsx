@@ -1,6 +1,11 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Brain, EyeOff, Github, Loader2, Mail, RefreshCw } from 'lucide-react'
+import { SiGithub } from '@icons-pack/react-simple-icons'
+import { Brain, EyeOff, Loader2, Mail, RefreshCw } from 'lucide-react'
 import { useRef, type FormEvent, type RefObject } from 'react'
 
 type SignInEmailStepProps = {
@@ -52,7 +57,7 @@ export const SignInEmailStep = ({
             <>
               <div className="flex items-center gap-2">
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 dark:bg-transparent">
-                  <Github className="size-6 text-emerald-600 dark:text-[#DCE875]" />
+                  <SiGithub className="size-6 text-emerald-600 dark:text-[#DCE875]" />
                 </div>
                 <p className="text-base text-muted-foreground">Thunderbolt is open-source</p>
               </div>

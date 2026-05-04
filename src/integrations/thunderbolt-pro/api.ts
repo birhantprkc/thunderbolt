@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { getSettings } from '@/dal'
 import { getDb } from '@/db/database'
 import type { HttpClient } from '@/lib/http'
@@ -36,7 +40,7 @@ export const search = async (params: SearchParams, httpClient: HttpClient): Prom
     return response.data
   } catch (error) {
     console.error('Search error:', error)
-    throw new Error(`Search failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    throw new Error(`Search failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { cause: error })
   }
 }
 
@@ -62,7 +66,9 @@ export const fetchContent = async (params: FetchContentParams, httpClient: HttpC
     return response.data
   } catch (error) {
     console.error('Fetch content error:', error)
-    throw new Error(`Fetch content failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    throw new Error(`Fetch content failed: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+      cause: error,
+    })
   }
 }
 
@@ -83,7 +89,7 @@ export const fetchLinkPreview = async (params: LinkPreviewParams, httpClient: Ht
     return response.data
   } catch (error) {
     console.error('Link preview error:', error)
-    throw new Error(error instanceof Error ? error.message : 'Unknown error')
+    throw new Error(error instanceof Error ? error.message : 'Unknown error', { cause: error })
   }
 }
 
@@ -118,7 +124,9 @@ export const getCurrentWeather = async (params: WeatherParams, httpClient: HttpC
     return response.data
   } catch (error) {
     console.error('Weather error:', error)
-    throw new Error(`Weather request failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    throw new Error(`Weather request failed: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+      cause: error,
+    })
   }
 }
 
@@ -158,7 +166,9 @@ export const getWeatherForecast = async (
     return validatedData
   } catch (error) {
     console.error('Weather forecast error:', error)
-    throw new Error(`Weather forecast request failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    throw new Error(`Weather forecast request failed: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+      cause: error,
+    })
   }
 }
 
@@ -193,6 +203,8 @@ export const searchLocations = async (params: SearchLocationParams, httpClient: 
     return response.data
   } catch (error) {
     console.error('Location search error:', error)
-    throw new Error(`Location search failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    throw new Error(`Location search failed: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+      cause: error,
+    })
   }
 }

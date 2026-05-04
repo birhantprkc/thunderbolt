@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 set -euo pipefail
 
 # Colors
@@ -61,9 +66,9 @@ check "cmake" \
   "cmake --version | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'" \
   "install with: brew install cmake"
 
-check "docker" \
-  "docker info >/dev/null 2>&1 && echo \"\$(docker --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1), running\"" \
-  "install Docker Desktop: https://docker.com/products/docker-desktop — make sure daemon is running" \
+check "container runtime (docker or podman)" \
+  "if command -v podman-compose > /dev/null 2>&1 && podman info >/dev/null 2>&1; then echo \"podman \$(podman --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1), running\"; elif docker info >/dev/null 2>&1; then echo \"docker \$(docker --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1), running\"; else exit 1; fi" \
+  "install Docker Desktop (https://docker.com/products/docker-desktop) or Podman (https://podman.io) — make sure daemon is running" \
   true
 
 check "gh" \

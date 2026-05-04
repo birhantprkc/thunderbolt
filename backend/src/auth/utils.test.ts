@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { describe, expect, it } from 'bun:test'
 import { buildVerifyUrl, getValidatedOrigin, isDeepLinkPlatform, parseTrustedOrigins } from './utils'
 
@@ -122,7 +126,7 @@ describe('buildVerifyUrl', () => {
       headers: { 'x-client-platform': 'ios' },
     })
     const result = buildVerifyUrl('https://app.example.com', 'user@example.com', '123456', request)
-    expect(result).toBe('https://thunderbolt.io/auth/verify?email=user%40example.com&otp=123456')
+    expect(result).toBe('https://app.thunderbolt.io/auth/verify?email=user%40example.com&otp=123456')
   })
 
   it('uses deep link URL for Android platform', () => {
@@ -130,7 +134,7 @@ describe('buildVerifyUrl', () => {
       headers: { 'x-client-platform': 'android' },
     })
     const result = buildVerifyUrl('https://app.example.com', 'user@example.com', '123456', request)
-    expect(result).toBe('https://thunderbolt.io/auth/verify?email=user%40example.com&otp=123456')
+    expect(result).toBe('https://app.thunderbolt.io/auth/verify?email=user%40example.com&otp=123456')
   })
 
   it('uses origin URL for web platform', () => {

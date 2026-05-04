@@ -1,4 +1,9 @@
 #!/usr/bin/env bun
+
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 /**
  * Create Release Script
  *
@@ -67,7 +72,7 @@ const parseArgs = (): Args => {
     if (arg === '--help' || arg === '-h') {
       args.help = true
     } else if (arg === '--version' || arg === '-v') {
-      args.version = process.argv[++i]
+      args.version = process.argv[++i]?.replace(/^v/, '')
     } else if (arg === '--type' || arg === '-t') {
       args.type = process.argv[++i] as VersionType
     } else if (arg === '--platform') {

@@ -1,5 +1,8 @@
-import { getCK } from '@/crypto/key-storage'
-import { isEncryptionEnabled } from '@/db/encryption'
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+import { needsSyncSetupWizard } from '@/db/encryption'
 import { isSyncEnabled, setSyncEnabled, syncEnabledChangeEvent } from '@/db/powersync'
 import { trackEvent } from '@/lib/posthog'
 import { useEffect, useState } from 'react'
@@ -30,11 +33,10 @@ export const useSyncEnabledToggle = () => {
   // Detect pre-encryption users: sync ON + encryption enabled + no CK in IndexedDB
   useEffect(() => {
     const checkEncryptionMigration = async () => {
-      if (!isEncryptionEnabled() || !isSyncEnabled()) {
+      if (!isSyncEnabled()) {
         return
       }
-      const ck = await getCK()
-      if (ck) {
+      if (!(await needsSyncSetupWizard())) {
         return
       }
       // Pre-encryption user: disable sync silently.
@@ -52,21 +54,13 @@ export const useSyncEnabledToggle = () => {
       trackEvent('settings_sync_disabled')
       return
     }
-    if (!isEncryptionEnabled()) {
-      await setSyncEnabled(true)
-      setSyncEnabledState(true)
-      trackEvent('settings_sync_enabled')
+    if (await needsSyncSetupWizard()) {
+      setSyncSetupOpen(true)
       return
     }
-    // Encryption already set up (CK exists) — just enable sync, no wizard needed
-    const ck = await getCK()
-    if (ck) {
-      await setSyncEnabled(true)
-      setSyncEnabledState(true)
-      trackEvent('settings_sync_enabled')
-      return
-    }
-    setSyncSetupOpen(true)
+    await setSyncEnabled(true)
+    setSyncEnabledState(true)
+    trackEvent('settings_sync_enabled')
   }
 
   const handleSyncSetupComplete = async () => {

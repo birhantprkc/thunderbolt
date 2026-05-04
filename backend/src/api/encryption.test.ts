@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { createAuth } from '@/auth/auth'
 import { session as sessionTable, user as userTable } from '@/db/auth-schema'
 import { encryptionMetadataTable, envelopesTable } from '@/db/encryption-schema'
@@ -911,6 +915,79 @@ describe('Encryption API', () => {
       expect(metadata.canaryIv).toBe('my-iv')
       expect(metadata.canaryCtext).toBe('my-ctext')
       expect(metadata.canarySecretHash).toBe(await hashSecret('my-secret'))
+    })
+
+    it('blocks re-bootstrap with wrong canary when encryption metadata already exists (defense-in-depth)', async () => {
+      await createUserAndSession(p('u-reboot'), p('tok-reboot'))
+      await insertDevice(p('d-reboot'), p('u-reboot'))
+      // Simulate existing encryption metadata from a previous first-device setup
+      await insertCanaryWithSecret(p('u-reboot'))
+      // No envelopes exist — simulates state after all devices revoked/envelopes deleted
+
+      // Attacker tries first-device bootstrap with a fake canary secret
+      const response = await app.handle(
+        new Request(`${BASE}/devices/${p('d-reboot')}/envelope`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${signToken(p('tok-reboot'))}`,
+            'X-Device-ID': p('d-reboot'),
+          },
+          body: JSON.stringify({
+            wrappedCK: 'attacker-controlled-key',
+            canaryIv: 'attacker-iv',
+            canaryCtext: 'attacker-ctext',
+            canarySecret: 'wrong-secret',
+          }),
+        }),
+      )
+
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.error).toContain('Invalid canary secret')
+
+      // No envelope should have been stored
+      const envelopes = await db
+        .select()
+        .from(envelopesTable)
+        .where(eq(envelopesTable.deviceId, p('d-reboot')))
+      expect(envelopes).toHaveLength(0)
+    })
+
+    it('allows re-bootstrap with correct canary when encryption metadata already exists', async () => {
+      await createUserAndSession(p('u-recover'), p('tok-recover'))
+      await insertDevice(p('d-recover'), p('u-recover'))
+      await insertCanaryWithSecret(p('u-recover'))
+      // No envelopes — simulates recovery after all devices revoked
+
+      // Legitimate user re-bootstraps with the correct canary secret (e.g. from recovery key)
+      const response = await app.handle(
+        new Request(`${BASE}/devices/${p('d-recover')}/envelope`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${signToken(p('tok-recover'))}`,
+            'X-Device-ID': p('d-recover'),
+          },
+          body: JSON.stringify({
+            wrappedCK: 'recovered-wrapped-key',
+            canaryIv: 'recover-iv',
+            canaryCtext: 'recover-ctext',
+            canarySecret: testCanarySecret,
+          }),
+        }),
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.trusted).toBe(true)
+
+      // Device should be trusted
+      const [device] = await db
+        .select()
+        .from(devicesTable)
+        .where(eq(devicesTable.id, p('d-recover')))
+      expect(device.trusted).toBe(true)
     })
 
     it('does not overwrite existing canary on subsequent envelope submissions', async () => {

@@ -1,6 +1,10 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
 import { type HttpClient } from '@/contexts'
-import ky from 'ky'
+import { createClient } from '@/lib/http'
 import { registerDevice, storeEnvelope, fetchMyEnvelope, fetchCanary } from './encryption'
 
 const deviceIdKey = 'thunderbolt_device_id'
@@ -37,7 +41,7 @@ const createCapturingHttpClient = (
   }
 
   return {
-    httpClient: ky.create({ fetch: mockFetch as unknown as typeof fetch, prefixUrl: 'http://test-api.local' }),
+    httpClient: createClient({ fetch: mockFetch as unknown as typeof fetch, prefixUrl: 'http://test-api.local' }),
     getLastRequest: () => lastRequest,
   }
 }

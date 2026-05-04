@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import type { db as DbType } from '@/db/client'
 import {
   powersyncConflictTarget,
@@ -15,6 +19,9 @@ const validTables = new Set<string>(powersyncTableNames)
 const uploadDenyColumns: Partial<Record<PowerSyncTableName, string[]>> = {
   devices: ['revoked_at', 'trusted', 'public_key', 'mlkem_public_key', 'approval_pending'],
 }
+
+/** Tables that cannot be deleted via PowerSync upload — must use dedicated API endpoints. */
+const uploadDenyDelete = new Set<PowerSyncTableName>(['devices'])
 
 type PowerSyncOperation = {
   op: 'PUT' | 'PATCH' | 'DELETE'
@@ -121,6 +128,8 @@ export const applyOperation = async (
       return patched.length > 0
     }
     case 'DELETE': {
+      if (uploadDenyDelete.has(tableName)) return false
+
       const deleted = await database
         .delete(table)
         .where(and(eq(pkColumn, op.id), eq(tableWithUserId.userId, userId)))

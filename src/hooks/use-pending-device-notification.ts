@@ -1,5 +1,10 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { useDatabase } from '@/contexts'
 import { getDevice, getPendingDevices, type Device } from '@/dal'
+import { isEncryptionEnabled } from '@/db/encryption'
 import { isSyncEnabled } from '@/db/powersync'
 import { getDeviceId } from '@/lib/auth-token'
 import { toCompilableQuery } from '@powersync/drizzle-driver'
@@ -21,7 +26,7 @@ export const usePendingDeviceNotification = () => {
 
   const currentDevice = currentDeviceRows[0] ?? null
   const isCurrentDeviceTrusted = currentDevice?.trusted === 1
-  const shouldNotify = isSyncEnabled() && isCurrentDeviceTrusted
+  const shouldNotify = isEncryptionEnabled() && isSyncEnabled() && isCurrentDeviceTrusted
 
   const pendingDeviceToNotify: Device | null = shouldNotify ? (pendingDevices[0] ?? null) : null
 

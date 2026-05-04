@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { z } from 'zod'
 
 /**
@@ -61,6 +65,9 @@ const settingsSchema = z
     corsExposeHeaders: z
       .string()
       .default('mcp-session-id,set-auth-token,ratelimit-limit,ratelimit-remaining,ratelimit-reset,retry-after'),
+
+    // E2E encryption — when true, devices must complete the trust flow before syncing
+    e2eeEnabled: z.boolean().default(false),
 
     swaggerEnabled: z.boolean().default(false),
 
@@ -130,6 +137,7 @@ const parseSettings = (): Settings => {
     corsExposeHeaders:
       process.env.CORS_EXPOSE_HEADERS ||
       'mcp-session-id,set-auth-token,ratelimit-limit,ratelimit-remaining,ratelimit-reset,retry-after',
+    e2eeEnabled: process.env.E2EE_ENABLED === 'true',
     swaggerEnabled: process.env.SWAGGER_ENABLED === 'true',
     rateLimitEnabled: process.env.RATE_LIMIT_ENABLED !== 'false',
     trustedProxy: (process.env.TRUSTED_PROXY || '').toLowerCase(),
@@ -177,7 +185,7 @@ export const isOAuthRedirectUriAllowed = (uri: string, settings: Pick<Settings, 
     const url = new URL(uri)
     // Construct origin manually — url.origin returns 'null' for non-standard protocols like tauri://
     const origin = `${url.protocol}//${url.host}`
-    const allowedOrigins = [...getCorsOriginsList(settings), 'https://thunderbolt.io']
+    const allowedOrigins = [...getCorsOriginsList(settings), 'https://app.thunderbolt.io']
     if (allowedOrigins.includes(origin)) {
       return true
     }

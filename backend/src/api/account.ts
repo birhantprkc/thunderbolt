@@ -1,9 +1,21 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import type { Auth } from '@/auth/elysia-plugin'
 import { createAuthMacro } from '@/auth/elysia-plugin'
-import { deleteUser, revokeDevice, deleteEnvelope, revokeDeviceSessions } from '@/dal'
+import {
+  deleteUser,
+  revokeDevice,
+  deleteEnvelope,
+  revokeDeviceSessions,
+  getDeviceById,
+  getEncryptionMetadata,
+} from '@/dal'
 import type { db as DbType } from '@/db/client'
+import { verifyCanaryProofWithMetadata } from '@/lib/canary'
 import { safeErrorHandler } from '@/middleware/error-handling'
-import { Elysia } from 'elysia'
+import { Elysia, t } from 'elysia'
 
 /** Account API routes. All routes require authentication. */
 export const createAccountRoutes = (auth: Auth, database: typeof DbType) => {
@@ -12,8 +24,37 @@ export const createAccountRoutes = (auth: Auth, database: typeof DbType) => {
     .use(createAuthMacro(auth))
     .post(
       '/devices/:id/revoke',
-      async ({ params, set, user: sessionUser }) => {
+      async ({ params, body, request, set, user: sessionUser }) => {
         const userId = sessionUser!.id
+
+        const callerDeviceId = request.headers.get('x-device-id')?.trim()
+        if (!callerDeviceId) {
+          set.status = 400
+          return { error: 'X-Device-ID header is required' }
+        }
+
+        // If E2EE is active (encryption metadata exists), require canary proof-of-CK-possession.
+        // Checks `metadata` (not `metadata?.canarySecretHash`) for fail-closed behavior:
+        // if metadata exists with a null hash, we still block rather than silently skip.
+        const metadata = await getEncryptionMetadata(database, userId)
+        if (metadata) {
+          if (!body.canarySecret) {
+            set.status = 403
+            return { error: 'Canary secret required for device revocation' }
+          }
+          if (!(await verifyCanaryProofWithMetadata(body.canarySecret, metadata.canarySecretHash))) {
+            set.status = 403
+            return { error: 'Invalid canary secret' }
+          }
+
+          // Caller must be a trusted device (defense-in-depth)
+          const callerDevice = await getDeviceById(database, callerDeviceId)
+          if (!callerDevice || callerDevice.userId !== userId || !callerDevice.trusted) {
+            set.status = 403
+            return { error: 'Only trusted devices can revoke devices' }
+          }
+        }
+
         await database.transaction(async (tx) => {
           const txDb = tx as unknown as typeof database
           await deleteEnvelope(txDb, params.id, userId)
@@ -25,7 +66,12 @@ export const createAccountRoutes = (auth: Auth, database: typeof DbType) => {
         })
         set.status = 204
       },
-      { auth: true },
+      {
+        auth: true,
+        body: t.Object({
+          canarySecret: t.Optional(t.String({ maxLength: 500 })),
+        }),
+      },
     )
     .delete(
       '/',

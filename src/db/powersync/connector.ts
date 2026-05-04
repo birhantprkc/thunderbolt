@@ -1,7 +1,12 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { getDeviceId, getAuthToken } from '@/lib/auth-token'
 import { getDeviceDisplayName } from '@/lib/platform'
 import type { AbstractPowerSyncDatabase, PowerSyncBackendConnector, PowerSyncCredentials } from '@powersync/web'
 import { encodeForUpload } from '@/db/encryption'
+import { sanitizeErrorForTracking, trackSyncEvent } from './sync-tracker'
 
 /** Dispatched when backend returns 410 (account deleted), 403 + DEVICE_DISCONNECTED, 403 + DEVICE_NOT_TRUSTED, or 409 + DEVICE_ID_TAKEN. App should reset and reload. */
 export const powersyncCredentialsInvalid = 'powersync_credentials_invalid'
@@ -98,17 +103,27 @@ export class ThunderboltConnector implements PowerSyncBackendConnector {
         if (status !== 401 && body.code !== 'DEVICE_NOT_TRUSTED') {
           console.error('Failed to fetch PowerSync credentials:', status, body)
         }
+        trackSyncEvent('sync_credentials_error', {
+          status,
+          error_code: body.code,
+          had_token: hadToken,
+        })
         return null
       }
 
       const data: TokenResponse = (await response.json()) as TokenResponse
+      const expiresAt = new Date(data.expiresAt)
+      trackSyncEvent('sync_credentials_fetch', {
+        expires_in_ms: expiresAt.getTime() - Date.now(),
+      })
       return {
         endpoint: data.powerSyncUrl,
         token: data.token,
-        expiresAt: new Date(data.expiresAt),
+        expiresAt,
       }
     } catch (error) {
       console.error('Error fetching PowerSync credentials:', error)
+      trackSyncEvent('sync_credentials_error', { had_token: hadToken, error: sanitizeErrorForTracking(error) })
       return null
     }
   }
@@ -154,8 +169,13 @@ export class ThunderboltConnector implements PowerSyncBackendConnector {
 
       await transaction.complete()
       console.info('PowerSync upload completed successfully')
+      trackSyncEvent('sync_upload', { operation_count: operations.length })
     } catch (error) {
       console.error('PowerSync upload failed:', error)
+      trackSyncEvent('sync_upload_error', {
+        error: sanitizeErrorForTracking(error),
+        operation_count: transaction.crud.length,
+      })
       // Don't call complete() - PowerSync will retry the upload
       throw error
     }

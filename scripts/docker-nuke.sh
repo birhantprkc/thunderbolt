@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 set -euo pipefail
 
 RED='\033[0;31m'
@@ -9,6 +14,9 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 COMPOSE_FILE="$PROJECT_ROOT/powersync-service/docker-compose.yml"
+
+# Auto-detect compose tool (podman-compose takes precedence over docker compose)
+COMPOSE=$(command -v podman-compose > /dev/null 2>&1 && podman info > /dev/null 2>&1 && echo podman-compose || echo "docker compose")
 
 if [ ! -f "$COMPOSE_FILE" ]; then
   echo -e "${RED}✗ Compose file not found: $COMPOSE_FILE${NC}"
@@ -24,7 +32,7 @@ done
 
 if [ "$CONFIRMED" = false ]; then
   echo -e "${YELLOW}This will destroy all docker containers, volumes, and data for this project.${NC}"
-  echo -e "${YELLOW}You will lose all local Postgres and Mongo data.${NC}"
+  echo -e "${YELLOW}You will lose all local Postgres data.${NC}"
   echo ""
   read -rp "Are you sure? (y/N) " answer
   if [ "$answer" != "y" ] && [ "$answer" != "Y" ]; then
@@ -34,9 +42,9 @@ if [ "$CONFIRMED" = false ]; then
 fi
 
 echo -e "${RED}→ Stopping and removing containers + volumes...${NC}"
-docker compose -f "$COMPOSE_FILE" down -v
+$COMPOSE -f "$COMPOSE_FILE" down -v
 
 echo -e "${GREEN}→ Recreating containers from scratch...${NC}"
-docker compose -f "$COMPOSE_FILE" up -d
+$COMPOSE -f "$COMPOSE_FILE" up -d
 
 echo -e "${GREEN}✓ Docker environment nuked and recreated!${NC}"

@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import { ThunderboltConnector } from '@/db/powersync/connector'
@@ -20,11 +24,13 @@ mock.module('@/lib/posthog', () => ({
   trackEvent: mockTrackEvent,
 }))
 
+const mockGetCK = mock(() => Promise.resolve(null))
+
 mock.module('@/db/encryption', () => ({
   isEncryptionEnabled: () => true,
+  needsSyncSetupWizard: async () => !(await mockGetCK()),
 }))
 
-const mockGetCK = mock(() => Promise.resolve(null))
 mock.module('@/crypto/key-storage', () => ({
   getCK: mockGetCK,
 }))

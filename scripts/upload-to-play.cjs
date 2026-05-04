@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 const { google } = require('googleapis')
 const fs = require('fs')
 const path = require('path')
@@ -74,7 +78,10 @@ async function uploadToPlayStore() {
             releases: [
               {
                 versionCodes: [uploadResponse.data.versionCode],
-                status: track === 'internal' ? 'completed' : 'draft',
+                // To auto-rollout to testers, the app setup must be fully completed in Google Play Console
+                // (store listing, content rating, target audience, etc.). Until then, only 'draft' is accepted.
+                // Once the setup is done, switch back to: status: track === 'internal' ? 'completed' : 'draft',
+                status: 'draft',
               },
             ],
           },

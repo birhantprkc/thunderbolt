@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { PGlite } from '@electric-sql/pglite'
 import { drizzle as drizzlePglite } from 'drizzle-orm/pglite'
 import { migrate as migratePglite } from 'drizzle-orm/pglite/migrator'
@@ -14,13 +18,20 @@ if (process.env.DATABASE_DRIVER === 'postgres' && !process.env.DATABASE_URL) {
 
 const isPglite = process.env.DATABASE_DRIVER !== 'postgres'
 
-const pgliteDb = isPglite
-  ? drizzlePglite({ client: new PGlite(process.env.DATABASE_URL), schema }) // undefined = in-memory
-  : null
+const pgliteClient = isPglite ? new PGlite(process.env.DATABASE_URL) : null // undefined = in-memory
+
+const pgliteDb = pgliteClient ? drizzlePglite({ client: pgliteClient, schema }) : null
 
 const postgresDb = isPglite ? null : drizzlePostgres({ client: postgres(process.env.DATABASE_URL!), schema })
 
 export const db = pgliteDb ?? postgresDb!
+
+/** Close the database connection — call this during test teardown to release WASM resources */
+export const closeDb = async () => {
+  if (pgliteClient && !pgliteClient.closed) {
+    await pgliteClient.close()
+  }
+}
 
 /**
  * Resolve the Drizzle migrations folder.

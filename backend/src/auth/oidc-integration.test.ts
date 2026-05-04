@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { mock } from 'bun:test'
 import * as authUtils from '@/auth/utils'
 import * as waitlistUtils from '@/waitlist/utils'
@@ -63,6 +67,7 @@ const baseSettings: Settings = {
   betterAuthSecret: 'test-secret-at-least-32-chars-long!!',
   rateLimitEnabled: false,
   swaggerEnabled: false,
+  e2eeEnabled: false,
   trustedProxy: '',
 }
 

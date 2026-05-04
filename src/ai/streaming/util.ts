@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import {
   extractReasoningMiddleware,
@@ -104,11 +108,10 @@ export const parseEnhancedSseFile = (fileContent: string): EnhancedSseFile => {
 
   // Extract and parse front matter
   const frontMatterContent = trimmedContent.slice(3, frontMatterEndIndex)
-  let metadata: Record<string, any> = {}
+  let metadata: Record<string, any>
   try {
     metadata = parseYamlFrontMatter(frontMatterContent)
   } catch {
-    // If YAML parsing fails, use empty metadata
     metadata = {}
   }
 

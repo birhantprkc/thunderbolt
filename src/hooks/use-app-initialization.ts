@@ -1,3 +1,8 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+import { fetchConfig } from '@/api/config'
 import type { HttpClient } from '@/contexts'
 import { getSettings } from '@/dal'
 import { getAuthToken } from '@/lib/auth-token'
@@ -51,6 +56,10 @@ const initializePostHog = async (httpClient?: HttpClient): Promise<PostHog | nul
 }
 
 const executeInitializationSteps = async (httpClient?: HttpClient): Promise<HandleResult<InitData>> => {
+  // Step 0: Fetch backend config and hydrate store (only on success).
+  // When fetch fails (offline/error), the store retains its persisted localStorage value.
+  await fetchConfig(defaultSettingCloudUrl.value!, httpClient)
+
   // Step 1: App directory creation
   let appDirPath: string
   try {

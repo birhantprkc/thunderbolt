@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { PGlite } from '@electric-sql/pglite'
 import { sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/pglite'
@@ -25,12 +29,22 @@ class TestDbManager {
     this.initialized = true
   }
 
+  /** Close the PGlite instance to release WASM resources and allow clean process exit */
+  async close() {
+    if (this.client) {
+      await this.client.close()
+      this.client = null
+      this.db = null
+      this.initialized = false
+    }
+  }
+
   /**
    * Create a test database instance with transaction isolation
    */
   async createTestDb() {
     if (!this.initialized) {
-      throw new Error('TestDbManager not initialized. Call initialize() first or import test-setup.ts')
+      await this.initialize()
     }
 
     // Start a transaction using Drizzle's API

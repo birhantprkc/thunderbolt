@@ -1,5 +1,23 @@
-/** Whether E2E encryption is enabled. Defaults to true. */
-export const isEncryptionEnabled = (): boolean => import.meta.env.VITE_E2EE_ENABLED !== 'false'
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+import { useConfigStore } from '@/api/config-store'
+import { getCK } from '@/crypto/key-storage'
+
+/** Whether E2E encryption is enabled. Reads from the persisted config store (hydrated from /config endpoint). */
+export const isEncryptionEnabled = (): boolean => useConfigStore.getState().config.e2eeEnabled === true
+
+/**
+ * Returns true when the sync setup wizard is needed before enabling sync.
+ * The wizard is required only when E2EE is enabled AND no Content Key exists yet.
+ */
+export const needsSyncSetupWizard = async (): Promise<boolean> => {
+  if (!isEncryptionEnabled()) {
+    return false
+  }
+  return !(await getCK())
+}
 
 /**
  * Single source of truth for encrypted tables and their columns.

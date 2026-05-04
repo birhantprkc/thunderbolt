@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { type HttpClient } from '@/contexts'
 import { getAuthToken, getDeviceId } from '@/lib/auth-token'
 
@@ -84,6 +88,15 @@ export const fetchCanary = async (httpClient: HttpClient): Promise<FetchCanaryRe
 export const denyDevice = async (httpClient: HttpClient, deviceId: string, canarySecret: string): Promise<void> => {
   await httpClient.post(`devices/${encodeURIComponent(deviceId)}/deny`, {
     json: { canarySecret },
+    headers: authHeaders(),
+    credentials: 'omit',
+  })
+}
+
+/** Revoke a device. Includes canary proof-of-CK-possession when E2EE is active. */
+export const revokeDevice = async (httpClient: HttpClient, deviceId: string, canarySecret?: string): Promise<void> => {
+  await httpClient.post(`account/devices/${encodeURIComponent(deviceId)}/revoke`, {
+    json: canarySecret ? { canarySecret } : {},
     headers: authHeaders(),
     credentials: 'omit',
   })

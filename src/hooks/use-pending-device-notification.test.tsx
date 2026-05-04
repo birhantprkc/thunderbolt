@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { getDb } from '@/db/database'
 import { devicesTable } from '@/db/tables'
 import { resetTestDatabase, setupTestDatabase, teardownTestDatabase } from '@/dal/test-utils'
@@ -21,6 +25,13 @@ const realPowersync = await import('@/db/powersync')
 mock.module('@/db/powersync', () => ({
   ...realPowersync,
   isSyncEnabled: () => localStorage.getItem(syncEnabledKey) === 'true',
+}))
+
+// These tests verify E2EE pending device behavior — encryption must be enabled.
+const realEncryption = await import('@/db/encryption')
+mock.module('@/db/encryption', () => ({
+  ...realEncryption,
+  isEncryptionEnabled: () => true,
 }))
 
 const { usePendingDeviceNotification } = await import('./use-pending-device-notification')

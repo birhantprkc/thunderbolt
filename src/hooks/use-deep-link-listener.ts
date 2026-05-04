@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { useDatabase } from '@/contexts'
 import { getSettings } from '@/dal'
 import type { ReturnContext } from '@/lib/oauth-state'
@@ -55,7 +59,7 @@ export const determineNavigationTarget = (
  * Exported for testing
  */
 export const parseOAuthCallback = (url: URL): OAuthCallbackData | null => {
-  if (url.hostname !== 'thunderbolt.io' || !url.pathname.startsWith('/oauth/callback')) {
+  if (url.hostname !== 'app.thunderbolt.io' || !url.pathname.startsWith('/oauth/callback')) {
     return null
   }
 
@@ -77,7 +81,7 @@ export const parseOAuthCallback = (url: URL): OAuthCallbackData | null => {
  * Exported for testing
  */
 export const parseVerifyLinkCallback = (url: URL): VerifyLinkData | null => {
-  if (url.hostname !== 'thunderbolt.io' || !url.pathname.startsWith('/auth/verify')) {
+  if (url.hostname !== 'app.thunderbolt.io' || !url.pathname.startsWith('/auth/verify')) {
     return null
   }
 
@@ -100,7 +104,7 @@ type DeepLinkDependencies = {
 
 /**
  * Hook to listen for deep links (App Links / Universal Links)
- * Handles OAuth callbacks when the app is opened via https://thunderbolt.io/oauth/callback
+ * Handles OAuth callbacks when the app is opened via https://app.thunderbolt.io/oauth/callback
  *
  * @param handler Optional custom handler for deep links
  * @param dependencies Optional dependencies for testing (uses real implementations by default)

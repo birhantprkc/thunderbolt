@@ -1,7 +1,12 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { createMainRoutes } from '@/api/routes'
 import { createBetterAuthPlugin } from '@/auth/elysia-plugin'
 import { createGoogleAuthRoutes } from '@/auth/google'
 import { createMicrosoftAuthRoutes } from '@/auth/microsoft'
+import { createOidcConfigRoutes } from '@/auth/oidc'
 import { createLoggerMiddleware, createStandaloneLogger } from '@/config/logger'
 import { getCorsOriginsList, getSettings } from '@/config/settings'
 import { runMigrations } from '@/db/client'
@@ -10,10 +15,12 @@ import { createErrorHandlingMiddleware } from '@/middleware/error-handling'
 import { createHttpLoggingMiddleware } from '@/middleware/http-logging'
 import { createAuthIpRateLimit, createInferenceRateLimit, createProRateLimit } from '@/middleware/rate-limit'
 import { createMcpProxyRoutes } from '@/mcp-proxy/routes'
+import { createUniversalProxyRoutes } from '@/proxy/routes'
 import { createPostHogRoutes } from '@/posthog/routes'
 import { createProToolsRoutes } from '@/pro/routes'
 import { createWaitlistRoutes } from '@/waitlist/routes'
 import { createAccountRoutes } from '@/api/account'
+import { createConfigRoutes } from '@/api/config'
 import { createEncryptionRoutes } from '@/api/encryption'
 import { createPowerSyncRoutes } from '@/api/powersync'
 import type { AppDeps } from '@/types'
@@ -88,8 +95,11 @@ export const createApp = async (deps?: AppDeps) => {
       .use(createMainRoutes(auth, fetchFn))
       .use(createGoogleAuthRoutes(auth, fetchFn))
       .use(createMicrosoftAuthRoutes(auth, fetchFn))
+      .use(createOidcConfigRoutes())
       .use(createProToolsRoutes(auth, fetchFn, createProRateLimit(database, rateLimitSettings)))
+      .use(createUniversalProxyRoutes(auth, fetchFn, createProRateLimit(database, rateLimitSettings)))
       .use(createInferenceRoutes(auth, createInferenceRateLimit(database, rateLimitSettings)))
+      .use(createConfigRoutes(settings))
       .use(createPostHogRoutes(fetchFn))
       .use(createMcpProxyRoutes(auth, fetchFn))
       .use(

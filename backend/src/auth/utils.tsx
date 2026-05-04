@@ -1,8 +1,12 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 import { sendEmail, shouldSkipEmail } from '@/lib/resend'
 import { MagicLinkEmail } from '@/emails/magic-link'
 
 /** Deep link base URL for mobile apps (iOS/Android) */
-const deepLinkHost = 'https://thunderbolt.io'
+const deepLinkHost = 'https://app.thunderbolt.io'
 
 /** Platforms that support deep linking */
 const deepLinkPlatforms = ['ios', 'android']
@@ -88,7 +92,7 @@ export const sendSignInEmail = async ({ email, otp, verifyUrl }: SendSignInEmail
 
   const data = await sendEmail({
     to: email,
-    subject: `Thunderbolt Verification Code: ${otp}`,
+    subject: 'Your Thunderbolt verification code',
     react: <MagicLinkEmail code={otp} magicLinkUrl={verifyUrl} />,
   })
 
